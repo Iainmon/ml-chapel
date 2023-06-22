@@ -20,7 +20,7 @@ class Neuron {
             var re = lit(counter:string + "_" + i:string, r);
             this.weights.append(re);
         }
-        this.bias = lit(counter:string + "_bias",0);
+        this.bias = lit(counter:string + "_bias",rss.getNext(min=-1,max=1));
         counter += 1;
     }
 
@@ -30,13 +30,14 @@ class Neuron {
         for d in dendrites {
             sum = d + sum;
         }
+        sum = sum + bias;
         if linear {
             return sum;
         }
         return relu(sum);
     }
     proc updateParams(m: map(string,real)) {
-        // bias.nudge(m);
+        bias.nudge(m);
         for w in this.weights {
             w.nudge(m);
         }
@@ -196,7 +197,7 @@ proc epoch(mlp: Perceptron) {
     return (avgCost,m);
 }
 
-var mlp = new Perceptron(nin, [4,2,1]:list(int));
+var mlp = new Perceptron(nin, [4,1]:list(int));
 
 proc train(epochs: int) {
     for ep in 1..epochs {
