@@ -206,6 +206,10 @@ proc makeNudgeMap(e: Expr) {
     return m;
 }
 
+proc cnst(x: real) {
+    return new shared Constant(x): Expr;
+}
+
 
 // Some examples
 

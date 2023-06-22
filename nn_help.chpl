@@ -6,6 +6,15 @@ use micrograd;
 
 var neuronCounter: int = 0;
 
+class Neuron_ {
+    param nin: int;
+    var weights: [1..nin] shared Expr;
+}
+var n_ = new Neuron_(4,[lit("a",1),lit("a",1),lit("a",1),lit("a",1)]);
+
+
+
+
 class Neuron {
     param nin: int;
     var weightDom: domain(1,int,false);
@@ -51,6 +60,12 @@ class Neuron {
         //     w.nudge(m);
         weights.nudge(m);
     }
+
+    // proc this(xs: [1..nin] Expr) ref {}
+
+    // proc call(xs: [1..nin] shared Expr) {
+
+    // }
 }
 
 
@@ -87,10 +102,21 @@ class Layer {
     }
 
     proc apply(xs: [inputDomain] shared Expr) {
+
         return this.neurons.apply(xs);
+
+        // var _outs = this.neurons.toArray().apply(xs);
+        // var outs = new list(shared Expr);
+        // for o in _outs {
+        //     outs.append(o);
+        // }
+        // return outs;
     }
     proc updateParams(m: map(string,real)) {
         this.neruons.updateParams(m);
+        // for n in this.neurons {
+        //     n.updateParams(m);
+        // }
     }
 }
 
@@ -117,21 +143,7 @@ class Perceptron {
         }
         this.layers = layers.toArray();
         this.inputDomain = this.layers[0].inputDomain; // {0..nin-1};
-
-
-
-        // this.sizes.append(nin);
-        // this.sizes.append(other=nouts);
-        // this.layers = new list(shared Layer);
-        // for i in 0..(nouts.size-1) {
-        //     var l = new shared Layer(this.sizes[i], this.sizes[i + 1]);
-        //     if i == nouts.size {
-        //         for n in l.neurons {
-        //             n.linear = true;
-        //         }
-        //     }
-        //     this.layers.append(l);
-        // }
+        
     }
     proc apply(xs: [inputDomain] shared Expr) {
         var ys = xs;
@@ -172,92 +184,3 @@ writeln(louts.value());
 var p = new Perceptron(nin,[2,1]);
 var pouts = p.apply([cnst(1),cnst(1)]);
 writeln(pouts);
-
-
-/*
-
-proc cost(result: list(shared Expr),expected: list(shared Expr)) {
-    var sum = new shared Constant(0): Expr;
-    var diffs = result.toArray() - expected.toArray();
-    for d in diffs {
-        sum = sum + (d ** 2);
-    }
-    return sum;
-}
-
-var epochCounter = 1;
-
-proc epoch(mlp: Perceptron) {
-
-    writeln("epoch: ", epochCounter);
-    var trials = new list(list(shared Expr));
-
-    for i in 0..1 {
-        for j in 0..1 {
-            var trial = new list(shared Expr);
-            trial.append(new shared Constant(i): Expr);
-            trial.append(new shared Constant(j): Expr);
-            trials.append(trial);
-        }
-    }
-
-    // writeln(trials);
-
-
-    var trialResults = new list(list(shared Expr));
-    for t in trials {
-        var result = mlp.apply(t);
-        trialResults.append(result);
-        var res = + reduce t.toArray().value();
-        var expect = 0;
-        if res == 1 {
-            expect = 1;
-        }
-        writeln("Input: ", t.toArray().value(), " Expected: ", expect, " Output: ", result.toArray().value());
-    }
-
-    var totalCost: Expr = new shared Constant(0);
-
-    var xorCounter = 0;
-    for rs in trialResults {
-        var es = new list(shared Expr);
-        var n = 0;
-        n = (+ reduce trials[xorCounter].toArray().value()): int;
-        if n != 1 { n = 0; }
-        // if xorCounter == 1 || xorCounter == 2 {
-        //     n = 1;
-        // }
-        xorCounter += 1;
-        es.append(new shared Constant(n): Expr);
-
-        var c = cost(rs,es);
-        totalCost = totalCost + c;
-    }
-
-    var avgCost = totalCost / (new shared Constant(trialResults.size): Expr);
-
-    writeln("cost ", avgCost.value());
-
-    // avgCost.showGradient("cost");
-
-    var m = makeNudgeMap(avgCost);
-    writeln("delta ", m);
-
-    epochCounter += 1;
-
-    return (avgCost,m);
-}
-
-var mlp = new Perceptron(nin, [2,1]:list(int));
-
-proc train(epochs: int) {
-    for ep in 1..epochs {
-        var (c,m) = epoch(mlp);
-        // c.nudge(m);
-        mlp.updateParams(m);
-    }
-}
-
-train(1000);
-
-*/
