@@ -34,9 +34,7 @@ class Expr {
         writeln("------------------------");
     }
 
-    proc nudge(d: map(string,real)) {
-        
-    }
+    proc nudge(d: map(string,real)) { }
 
     operator +(a: Expr, b: Expr) { return (new shared AddExpr(a,b)): Expr; }
     operator -(a: Expr, b: Expr) { return (new shared SubExpr(a,b)): Expr; }

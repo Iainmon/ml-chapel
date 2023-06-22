@@ -35,7 +35,7 @@ class Neuron {
 
     proc apply(xs: [weightDom] shared Expr) {
         var dendrites = this.weights * xs;
-        var sum: Expr = new shared Constant(0); // bias?
+        var sum: Expr = cnst(0); // bias?
         
         for d in dendrites do
             sum = d + sum;
@@ -47,8 +47,6 @@ class Neuron {
     }
     proc updateParams(m: map(string,real)) {
         bias.nudge(m);
-        // for w in this.weights do
-        //     w.nudge(m);
         weights.nudge(m);
     }
 }
@@ -65,33 +63,16 @@ class Layer {
         this.nin = nin;
         this.nout = nout;
         this.inputDomain = {0..nin-1}; // Same as for each neuron weighDomain
-
         this.neuronDomain = {0..nout-1};
 
-
         this.neurons = [i in 0..nout-1] new shared Neuron(nin);
-
-        // var neurons = new list(shared Neuron);
-        // for i in neuronDomain {
-        //     var neuron = new shared Neuron(nin);
-        //     neurons.append(neuron);
-        // }
-        // this.neurons = neurons.toArray();
-
-
-        // this.neurons = new list(shared Neuron);
-        // for i in 1..nout {
-        //     var neuron = new shared Neuron(nin);
-        //     this.neurons.append(neuron);
-        // }
     }
 
-    proc apply(xs: [inputDomain] shared Expr) {
+    proc apply(xs: [inputDomain] shared Expr) do
         return this.neurons.apply(xs);
-    }
-    proc updateParams(m: map(string,real)) {
+
+    proc updateParams(m: map(string,real)) do
         this.neruons.updateParams(m);
-    }
 }
 
 class Perceptron {
@@ -118,8 +99,6 @@ class Perceptron {
         this.layers = layers.toArray();
         this.inputDomain = this.layers[0].inputDomain; // {0..nin-1};
 
-
-
         // this.sizes.append(nin);
         // this.sizes.append(other=nouts);
         // this.layers = new list(shared Layer);
@@ -137,16 +116,11 @@ class Perceptron {
         var ys = xs;
         for l in this.layers do
             ys = l.apply(ys);
-
         return ys;
     }
 
-    proc updateParams(m: map(string,real)) {
+    proc updateParams(m: map(string,real)) do
         this.layers.updateParams(m);
-        // for l in this.layers {
-        //     l.updateParams(m);
-        // }
-    }
 
 }
 
@@ -159,6 +133,7 @@ writeln(n);
 
 
 var inputs = [i in 0..nin-1] cnst(2);
+
 
 var nout = n.apply(inputs);
 writeln(nout.value());
@@ -174,7 +149,11 @@ var pouts = p.apply([cnst(1),cnst(1)]);
 writeln(pouts);
 
 
+
+
+// not yet ported
 /*
+
 
 proc cost(result: list(shared Expr),expected: list(shared Expr)) {
     var sum = new shared Constant(0): Expr;
