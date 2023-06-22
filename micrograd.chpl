@@ -22,6 +22,10 @@ class Expr {
     proc grad(name: string): real { return 0; }
     proc value(): real { return 0; }
 
+    proc init() {
+        
+    }
+
     proc showGradient(myName: string) {
         for name in this.freeVars() {
             var grad = this.grad(name);
@@ -45,6 +49,16 @@ class Expr {
 class Literal: Expr {
     var name: string;
     var base: real;
+
+    proc init() {
+        this.name = "";
+        this.base = 0;
+    }
+    proc init(name: string, base: real) {
+        this.name = name;
+        this.base = base;
+    }
+
     override proc freeVars() {
         return new set(string,[this.name]);
     }
@@ -73,12 +87,17 @@ proc lit(name: string, value: real): Expr {
 class Constant: Expr {
     var base: real;
     override proc value() { return this.base; }
+    proc init() { this.base = 0;}
+    proc init(base: real) { this.base = base; }
 }
 
 enum Op { plus,minus,times,div }
 
 class Compound: Expr {
     var children: list(shared Expr);
+
+    proc init(children: list(shared Expr)) { this.children = children; }
+    proc init() { this.children = new list(shared Expr); }
 
     proc binOpInit(a: shared Expr, b: shared Expr) {
         this.children = new list(shared Expr);
@@ -187,21 +206,12 @@ proc makeNudgeMap(e: Expr) {
     return m;
 }
 
-// proc add(a: Expr, b: Expr) {
-//     return new AddExpr(a, b);
-// }
 
-// var a = new shared Literal("a",2);
-// writeln(a);
-
-// var aa = new AddExpr(a: Expr,a: Expr);
-// writeln(aa);
-// writeln(aa.value());
-
+// Some examples
 
 /*
-var a: Expr = new shared Literal("a",2);
-var b: Expr = new shared Literal("b",3);
+var a: Expr = new shared Literal("a",2); // lit("a",2);
+var b: Expr = new shared Literal("b",3); // lit("b",3);
 var c: Expr = a + b; // new shared AddExpr(a, b);
 c.showGradient("c");
 
@@ -225,14 +235,3 @@ f.showGradient("f");
 
 */
 
-// class GenericValue {
-//     type t;
-//     var data: t;
-
-//     var children: list(owned GenericValue(t));
-
-//     var grad: real = 0;
-
-// }
-
-// type Value = GenericValue(real);

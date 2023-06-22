@@ -6,6 +6,15 @@ use micrograd;
 
 var counter: int = 0;
 
+class Neuron_ {
+    param nin: int;
+    var weights: [1..nin] shared Expr;
+}
+var n_ = new Neuron_(4,[lit("a",1),lit("a",1),lit("a",1),lit("a",1)]);
+
+
+
+
 class Neuron {
     var weights: list(shared Expr);
     var bias: shared Expr;
@@ -44,6 +53,10 @@ class Neuron {
     }
 
     // proc this(xs: [1..nin] Expr) ref {}
+
+    // proc call(xs: [1..nin] shared Expr) {
+
+    // }
 }
 
 
@@ -197,7 +210,7 @@ proc epoch(mlp: Perceptron) {
     return (avgCost,m);
 }
 
-var mlp = new Perceptron(nin, [4,1]:list(int));
+var mlp = new Perceptron(nin, [2,1]:list(int));
 
 proc train(epochs: int) {
     for ep in 1..epochs {
@@ -207,8 +220,5 @@ proc train(epochs: int) {
     }
 }
 
-train(5000);
+train(1000);
 
-// class Neuron {
-//     var nin: int;
-// }
