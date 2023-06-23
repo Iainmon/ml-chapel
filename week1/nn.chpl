@@ -134,6 +134,14 @@ class Perceptron {
 
 }
 
+proc cost(result: [?d] shared Expr,expected: [d] shared Expr) {
+    var sum = cnst(0);
+    var diffs = result - expected;
+    for d in diffs {
+        sum = sum + (d ** 2);
+    }
+    return sum;
+}
 
 param nin = 2;
 
@@ -158,7 +166,7 @@ var p = new Perceptron(nin,[2,1]);
 var pouts = p.apply([cnst(1),cnst(1)]);
 writeln(pouts);
 
-
+/*
 var dataset = [
     [cnst(0),cnst(0)],
     [cnst(0),cnst(1)],
@@ -168,14 +176,7 @@ var dataset = [
 writeln(dataset);
 
 
-proc cost(result: [?d] shared Expr,expected: [d] shared Expr) {
-    var sum = cnst(0);
-    var diffs = result - expected;
-    for d in diffs {
-        sum = sum + (d ** 2);
-    }
-    return sum;
-}
+
 
 var epochCounter = 1;
 
@@ -240,14 +241,15 @@ proc epoch(mlp: Perceptron) {
     return (avgCost,m);
 }
 
-var mlp = new shared Perceptron(nin, [4,1]);
 
-proc train(epochs: int) {
+proc train(mlp: shared Perceptron, epochs: int) {
     for ep in 1..epochs {
         var (c,m) = epoch(mlp);
         // c.nudge(m);
         mlp.updateParams(m);
     }
 }
+var mlp = new shared Perceptron(nin, [4,1]);
 
 train(20000);
+*/
