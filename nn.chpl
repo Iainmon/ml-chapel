@@ -24,7 +24,7 @@ class Neuron {
         this.weightDom = {0..nin-1};
 
         var seed = 17 + neuronCounter;
-        var rss = new RandomStream(real,seed);
+        var rss = new RandomStream(real);
 
         var weights = new list(shared Expr);
 
@@ -233,7 +233,7 @@ proc epoch(mlp: Perceptron) {
 
 
     var m = makeNudgeMap(avgCost);
-    writeln("delta ", m);
+    // writeln("delta ", m);
 
     epochCounter += 1;
 
