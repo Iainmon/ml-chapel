@@ -1,0 +1,21 @@
+#!/bin/sh
+
+filename=$1.chpl;
+echo "Compiling '$filename'";
+# start_time=`date +%s`;
+
+
+if chpl --baseline $filename --output=build/$1 ; then
+    # end_time=`date +%s`
+    # echo "execution time was `expr $end_time - $start_time` s.";
+    echo "Running 'build/$1'";
+    ./build/$1;
+    
+else
+    echo "Build failed";
+fi
+
+
+# echo "Username: $username";
+# echo "Age: $age";
+# echo "Full Name: $fullname";
