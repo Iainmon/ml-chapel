@@ -95,16 +95,9 @@ class Perceptron {
     // var outputDomain: domain(1,int,false);
 
     proc init(const nin: int, const nouts: [?D] int) {
-        // var szDom = D;
-        // var szs: [szDom] int = nouts;
-        // szDom = {0..szDom.size};
-        // for i in 1..nouts.size do
-        //     szs[i] = nouts[i - 1];
-        // szs[0] = nin;
 
         var szs = concat(int,[nin],nouts);
 
-        // var szs = [nin] + [i in D] nouts[i];
         this.sizesDomain = szs.domain; // {0..nouts.size};// szs.domain;
         this.sizes = szs;
         writeln(szs,szs.domain:string);
@@ -206,27 +199,12 @@ proc epoch(mlp: Perceptron) {
     writeln("epoch: ", epochCounter);
 
 
-    // writeln(trials);
-
     var resultsList = new list([0..#1] shared Expr);
     for d in dataset {
         resultsList.append(mlp.apply(d));
     }
     var results = resultsList.toArray(); // [i in dataset.domain] mlp.apply(dataset[i]);
 
-
-
-    // var trialResults = new list(list(shared Expr));
-    // for t in trials {
-    //     var result = mlp.apply(t);
-    //     trialResults.append(result);
-    //     var res = + reduce t.toArray().value();
-    //     var expect = 0;
-    //     if res == 1 {
-    //         expect = 1;
-    //     }
-    //     writeln("Input: ", t.toArray().value(), " Expected: ", expect, " Output: ", result.toArray().value());
-    // }
 
 
 
@@ -241,21 +219,6 @@ proc epoch(mlp: Perceptron) {
         totalCost = totalCost + c;
     }
 
-    // var xorCounter = 0;
-    // for rs in trialResults {
-    //     var es = new list(shared Expr);
-    //     var n = 0;
-    //     n = (+ reduce trials[xorCounter].toArray().value()): int;
-    //     if n != 1 { n = 0; }
-    //     // if xorCounter == 1 || xorCounter == 2 {
-    //     //     n = 1;
-    //     // }
-    //     xorCounter += 1;
-    //     es.append(new shared Constant(n): Expr);
-
-    //     var c = cost(rs,es);
-    //     totalCost = totalCost + c;
-    // }
 
     for i in results.domain {
         var input = datasetIn[i];
@@ -268,7 +231,6 @@ proc epoch(mlp: Perceptron) {
 
     writeln("cost ", avgCost.value());
 
-    // avgCost.showGradient("cost");
 
     var m = makeNudgeMap(avgCost);
     writeln("delta ", m);
@@ -289,94 +251,3 @@ proc train(epochs: int) {
 }
 
 train(20000);
-
-
-// not yet ported
-/*
-
-
-proc cost(result: list(shared Expr),expected: list(shared Expr)) {
-    var sum = new shared Constant(0): Expr;
-    var diffs = result.toArray() - expected.toArray();
-    for d in diffs {
-        sum = sum + (d ** 2);
-    }
-    return sum;
-}
-
-var epochCounter = 1;
-
-proc epoch(mlp: Perceptron) {
-
-    writeln("epoch: ", epochCounter);
-    var trials = new list(list(shared Expr));
-
-    for i in 0..1 {
-        for j in 0..1 {
-            var trial = new list(shared Expr);
-            trial.append(new shared Constant(i): Expr);
-            trial.append(new shared Constant(j): Expr);
-            trials.append(trial);
-        }
-    }
-
-    // writeln(trials);
-
-
-    var trialResults = new list(list(shared Expr));
-    for t in trials {
-        var result = mlp.apply(t);
-        trialResults.append(result);
-        var res = + reduce t.toArray().value();
-        var expect = 0;
-        if res == 1 {
-            expect = 1;
-        }
-        writeln("Input: ", t.toArray().value(), " Expected: ", expect, " Output: ", result.toArray().value());
-    }
-
-    var totalCost: Expr = new shared Constant(0);
-
-    var xorCounter = 0;
-    for rs in trialResults {
-        var es = new list(shared Expr);
-        var n = 0;
-        n = (+ reduce trials[xorCounter].toArray().value()): int;
-        if n != 1 { n = 0; }
-        // if xorCounter == 1 || xorCounter == 2 {
-        //     n = 1;
-        // }
-        xorCounter += 1;
-        es.append(new shared Constant(n): Expr);
-
-        var c = cost(rs,es);
-        totalCost = totalCost + c;
-    }
-
-    var avgCost = totalCost / (new shared Constant(trialResults.size): Expr);
-
-    writeln("cost ", avgCost.value());
-
-    // avgCost.showGradient("cost");
-
-    var m = makeNudgeMap(avgCost);
-    writeln("delta ", m);
-
-    epochCounter += 1;
-
-    return (avgCost,m);
-}
-
-var mlp = new Perceptron(nin, [2,1]:list(int));
-
-proc train(epochs: int) {
-    for ep in 1..epochs {
-        var (c,m) = epoch(mlp);
-        // c.nudge(m);
-        mlp.updateParams(m);
-    }
-}
-
-train(1000);
-
-*/
