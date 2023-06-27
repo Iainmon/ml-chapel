@@ -92,7 +92,7 @@ proc train(mlp: shared Perceptron, epochs: int) {
 const nin = datasetIn.size;
 const nout = datasetOut[0].size;
 
-var mlp = new shared Perceptron(3, [12,10,6]);
+var mlp = new shared Perceptron(3, [10,10,6]);
 
 
 train(mlp,20000);

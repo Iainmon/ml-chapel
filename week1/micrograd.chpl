@@ -113,7 +113,7 @@ class Compound: Expr {
     }
 
     override proc nudge(d: map(string,real)) {
-        for c in this.children {
+        forall c in this.children {
             c.nudge(d);
         }
     }
