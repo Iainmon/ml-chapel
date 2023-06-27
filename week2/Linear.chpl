@@ -1,9 +1,20 @@
 
+// module ChapelArray{
+// proc myMethod() {
+//     writeln("Hello from ChapelArray");
+// }
+// }
+
+
 module Linear {
 
 import LinearAlgebra as LA;
 import IO;
 import Random;
+
+
+
+
 
 record Matrix {
     type eltType;
@@ -70,7 +81,7 @@ record Matrix {
         // fw.writeln("matrix(",this.underlyingMatrix,", shape=",this.shape,")");
         var cntr = 0;
         for row in this.rows {
-            if cntr == 0 { fw.write("matrix("); } else { fw.write("       "); }
+            if cntr == 0 { if this.isVector { fw.write("vector("); } else { fw.write("matrix(");} } else { fw.write("       "); }
             if cntr < this.shape[0] - 1 { fw.writeln(row); } else { fw.write(row); }
             cntr += 1;
         }
@@ -80,8 +91,10 @@ record Matrix {
     proc transpose() do
         return new Matrix(LA.transpose(underlyingMatrix));
     
-    operator +(lhs: Matrix, rhs: Matrix) do 
-        return new Matrix(lhs.matrix + rhs.matrix);
+    operator +(lhs: Matrix, rhs: Matrix) {
+        var A = lhs.matrix + rhs.matrix;
+        return new Matrix(A);
+    }
 
     operator +(lhs: Matrix, rhs: eltType) do 
         return new Matrix(lhs.matrix + rhs);
@@ -89,11 +102,20 @@ record Matrix {
     operator +(lhs: eltType, rhs: Matrix) do
         return new Matrix(lhs + rhs.matrix);
 
-    operator -(lhs: Matrix, rhs: Matrix) do 
-        return new Matrix(lhs.matrix - rhs.matrix);
+    operator -(lhs: Matrix, rhs: Matrix) {
+        var A = lhs.matrix - rhs.matrix;
+        return new Matrix(A);
+    }
 
-    operator *(lhs: Matrix, rhs: Matrix) do
-        return new Matrix(lhs.matrix * rhs.matrix);
+    operator *(lhs: Matrix, rhs: Matrix) {
+        var A = lhs.matrix * rhs.matrix;
+        return new Matrix(A);
+    } 
+    operator *(r: real, m: Matrix(real)) {
+        var A = r * m.matrix;
+        return new Matrix(A);
+    }
+
 
     operator *(lhs: Matrix, rhs: eltType) do
         return new Matrix(lhs.matrix * rhs);
@@ -143,8 +165,20 @@ proc zeros(m: int, n: int, type eltType=real) {
     return new Matrix(A);
 }
 
+proc zeroVector(n: int, type eltType=real) {
+    var A = LA.Vector(n,eltType);
+    return new Matrix(A);
+}
+
 proc random(m: int, n: int, type eltType=real) {
     var A = LA.Matrix(m,n,eltType);
+    var rng = new owned Random.RandomStream(eltType=eltType);
+    rng.fillRandom(A);
+    return new Matrix(A);
+}
+
+proc randomVector(n: int, type eltType=real) {
+    var A = LA.Vector(n,eltType);
     var rng = new owned Random.RandomStream(eltType=eltType);
     rng.fillRandom(A);
     return new Matrix(A);
