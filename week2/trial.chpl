@@ -180,14 +180,14 @@ class Network {
         
 
 
-        var d = cost_derivative(activations.last().vector, y) * activationDerivative(zs.last().vector);
-        var delta_ = transpose(Matrix(d));
+        var d = cost_derivative(activations.last().matrix, y) * activationDerivative(zs.last().matrix);
+        var delta_ = Matrix(d);// transpose(Matrix(d));
 
         var deltaDomain = delta_.domain;
         var delta: [deltaDomain] real = delta_;
         
-        nabla_b.last.matrix = delta; // transpose(Matrix(delta));
-        nabla_w.last.updateMatrix(dot(delta, activations[activations.size-2].matrix));
+        nabla_b.last.matrix = transpose(delta); // transpose(Matrix(delta));
+        nabla_w.last.matrix = dot(transpose(delta), transpose(activations[activations.size-2].matrix));
 
 
         var ac = activations[activations.size-1].matrix;
@@ -199,11 +199,11 @@ class Network {
 
         for l in 2..<numLayers {
             var z = zs[zs.size-l].vector;
-            var sp = activationDerivative(Matrix(z));
+            var sp = activationDerivative(z);
             var w = weights[(weights.size -l) + 1].matrix;
             writeln("HelloWeights: ", w.shape, " ", w.domain, " ", w);
             writeln("HelloDelta: ", delta.shape, " ", delta.domain, " ", delta);
-            var delta_ = dot(weights[weights.size-l].matrix, delta) * sp;
+            var delta_ = dot(transpose(w), delta) * Matrix(sp);
             // var delta_ = dot(transpose(weights[weights.size-l+2].matrix), delta) * activationDerivative(z);
             deltaDomain = delta_.domain;
             delta = delta_;
@@ -271,7 +271,7 @@ var data = [
     ([1.0,1.0],[0.0,0.0,0.0,1.0])
 ];
 
-var net = new Network([2,4]);
+var net = new Network([2,6,4]);
 writeln(net);
 writeln("Biases: ", net.biases);
 writeln("Weights: ", net.weights);

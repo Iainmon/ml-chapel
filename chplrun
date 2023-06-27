@@ -5,7 +5,7 @@ echo "Compiling '$filename'";
 # start_time=`date +%s`;
 
 
-if chpl -I/opt/homebrew/opt/openblas/include -L/opt/homebrew/opt/openblas/lib -lblas $filename --output=build/$1 ; then
+if chpl --fast -I/opt/homebrew/opt/openblas/include -L/opt/homebrew/opt/openblas/lib -lblas $filename --output=build/$1 ; then
     # end_time=`date +%s`
     # echo "execution time was `expr $end_time - $start_time` s.";
     echo "Running 'build/$1'";
