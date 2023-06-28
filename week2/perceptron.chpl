@@ -58,7 +58,7 @@ class Network {
         biasesDomain = layerSizes.domain[0..#(numLayers - 1)]; //.translate(-1);
         weightsDomain = {0..#(numLayers - 1)};
 
-        biases = [y in biasesDomain] lina.zeros(layerSizes[y + 1],1); // [y in layerSizes[1..]] :real;
+        biases = [y in biasesDomain] lina.random(layerSizes[y + 1],1); // [y in layerSizes[1..]] :real;
         weights = makeMatrices(layerSizes);
 
         writeln("Biases: ", biases);
@@ -106,7 +106,8 @@ class Network {
     proc costM(input: lina.Matrix(real), expected: lina.Matrix(real)): real {
         var output = feedForwardM(input);
         var A = output.matrix - expected.matrix;
-        return 0.5 * LA.norm(A)**2;
+        return + reduce A**2;
+        // return 0.5 * LA.norm(A)**2;
     }
 
     proc costDerivative(output: [?d1] real, expected_output: [?d2] real) {
@@ -169,6 +170,7 @@ class Network {
 
 
 proc main() {
+    /*
     var data = [
         ([0.0,0.0],[1.0,0.0,0.0,0.0]),
         ([0.0,1.0],[0.0,1.0,0.0,0.0]),
@@ -177,25 +179,59 @@ proc main() {
     ];
 
     var net = new Network([2,20,4]);
+*/
+
+    var data: [0..7] ([0..2] real, [0..7] real) = [
+        ([0.0,0.0,0.0],[1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]),
+        ([0.0,0.0,1.0],[0.0,1.0,0.0,0.0,0.0,0.0,0.0,0.0]),
+        ([0.0,1.0,0.0],[0.0,0.0,1.0,0.0,0.0,0.0,0.0,0.0]),
+        ([0.0,1.0,1.0],[0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0]),
+        ([1.0,0.0,0.0],[0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0]),
+        ([1.0,0.0,1.0],[0.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0]),
+        ([1.0,1.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,1.0,0.0]),
+        ([1.0,1.0,1.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0])
+    ];
+    var d1Array = [0,0,0]:real;
+    writeln(d1Array);
+
+    halt(0);
+
+    var net = new Network([3,8,8,8]);
 
     writeln(net);
     writeln("Biases: ", net.biases);
     writeln("Weights: ", net.weights);
 
-    for i in 1..1000 {
+    var learningRate = 0.1;
+    var patience = 10.0;
+    var frustration = 0.0;
+    var lastCost = 0.0;
+
+    var shuffledData = data;
+    for i in 1..10000 {
         writeln("Epoch: ", i);
 
-        shuffle(data);
+        shuffle(shuffledData);
 
         var cost = 0.0;
-        for (x, y) in data {
+        for (x, y) in shuffledData {
             // writeln("Input: ", x, " Expected: ", y, " Output: ", net.feedForward(x).transpose().matrix);
             var X = lina.vectorToMatrix(x);
             var Y = lina.vectorToMatrix(y);
             cost += net.costM(X,Y);
-            net.adjust(x, y, 0.3);
+            net.adjust(x, y, learningRate);
         }
-        writeln("Cost: ", cost / data.domain.size);
+
+        var globalCost = cost / data.domain.size;
+        writeln("Cost: ",globalCost);
+
+        if globalCost <= 0.005 {
+            writeln("I think that's enough...");
+            break;
+        }
+        // writeln("Frustration: ", frustration);
+        // frustration += 1 / (((cost - lastCost) + 0.001) * patience);
+        // lastCost = cost;
     }
 
     writeln("--------------- Results ---------------");

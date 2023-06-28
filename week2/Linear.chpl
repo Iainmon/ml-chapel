@@ -22,6 +22,10 @@ record Matrix {
     var underlyingMatrix: [matrixDomain] eltType; 
     var isVector = false;
 
+    // proc init(A: [?d] ?eltType) where d.rank == 1 {
+    //     // this should work
+    // }
+
     proc init(A: [?d] ?eltType) {
         this.eltType = eltType;
 
@@ -56,6 +60,11 @@ record Matrix {
         underlyingMatrix = LA.Matrix(2,2,eltType);
     }
 
+    // create initializer that accepts an iterator
+    proc init(expr) {
+        var A = expr;
+        this.init(A);
+    }
 
 
     proc matrix { return underlyingMatrix; }
@@ -113,9 +122,13 @@ record Matrix {
     } 
     operator *(r: real, m: Matrix(real)) {
         var A = r * m.matrix;
-        return new Matrix(A);
+        // writeln((m.matrix * r).type:string);
+        return new Matrix(r * m.matrix);
     }
 
+    operator *=(ref lhs: Matrix, const ref rhs: Matrix) {
+        lhs.matrix *= rhs.matrix;
+    }
 
     operator *(lhs: Matrix, rhs: eltType) do
         return new Matrix(lhs.matrix * rhs);
@@ -200,6 +213,11 @@ proc randomVector(n: int, type eltType=real) {
 
 
 proc main() {
+
+    var m1 = random(10,10);
+    var _x = 1.0 * m1;
+    writeln(_x);
+    /*
     writeln(LA.Matrix([1,3]));
 
 
@@ -233,14 +251,14 @@ proc main() {
     writeln(x2);
 
     var size = 50;
-    var m1 = random(5000,5000);
+
     var m2 = random(5000,5000);
     var z = m1.dot(m2);
 
     foreach i in 1..10000 {
         z = m1.dot(z);
         writeln(i, " ", z.shape);
-    }
+    }*/
 }
 
 }
