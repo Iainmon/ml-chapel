@@ -2,13 +2,14 @@ import Linear as lina;
 import load;
 import Chai as chai;
 use List;
+use Random;
 
 use Random;
 
 
 writeln("Loading data...");
 
-const numImages = 1000;
+const numImages = 50;
 
 var images = load.loadImages(numImages);
 var (labels,labelVectors) = load.loadLabels(numImages);
@@ -41,15 +42,15 @@ writeln("Data: ", data.domain);
 
 writeln("Creating network...");
 // var (train,test) = chai.split(data,0.8);
-const layerDimensions = [imageVectorDomain.size, 16, 16, labelVectorDomain.size];
+const layerDimensions = [imageVectorDomain.size,1000,1000, labelVectorDomain.size];
 var net = new chai.Network(layerDimensions);
 
 
 writeln("Training network...");
 
 
-const learningRate = 0.8;
-const decay = 0.1;
+const learningRate = 0.1;
+// const decay = 0.01;
 const epochs = 100000;
 
 var shuffledData = data;
@@ -59,10 +60,16 @@ var lastCost = 1.0;
 for i in 1..epochs {
     writeln("Epoch: ", i);
 
+    // for (x, y) in data {
+    //     writeln("Input: [image] Expected: ", y, " Output: ", net.feedForward(x).transpose().matrix);
+    // }
+
     shuffle(shuffledData);
     var cached = [(x,y) in shuffledData] (lina.vectorToMatrix(x), lina.vectorToMatrix(y));
 
-    var lr = learningRate * exp(- decay * i:real);
+    var lr = learningRate; //* abs(lina.random(1,1).matrix[0,0]);//* exp(- decay * i:real);
+    var trainData = cached;
+    // net.train(trainData, lr);
 
     var cost = 0.0;
     for ((x, y),(X,Y)) in zip(shuffledData, cached) {

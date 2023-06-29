@@ -115,8 +115,8 @@ class Network {
         return output - expected_output;
     }
 
-    proc costDerivativeM(output: lina.Matrix(real), expected_output: lina.Matrix(real)) {
-        return output - expected_output;
+    proc costDerivativeM(output: lina.Matrix(real), expected: lina.Matrix(real)) {
+        return output - expected;
     }
 
     proc backprop(x: [?d1] real, y: [?d2] real) {
@@ -167,6 +167,25 @@ class Network {
         biases = [(b,nb) in zip(biases,nablaB)] b - (learningRate * nb);
     }
 
+    proc train(data: [?d] 2*lina.Matrix(real),eta: real) {
+        var batchSize = data.size;
+        var (nablaB,nablaW) = backprop(data[0][0].vector, data[0][1].vector);
+        // nablaB = 0.0;
+        // nablaW = 0.0;
+        for (X,Y) in data {
+            var x = X.vector;
+            var y = Y.vector;
+            var (deltaNablaB,deltaNablaW) = backprop(x,y);
+            nablaB = [(nb,dnb) in zip(nablaB,deltaNablaB)] nb + dnb;
+            nablaW = [(nw,dnw) in zip(nablaW,deltaNablaW)] nw + dnw;
+            weights = [(w,nw) in zip(weights,nablaW)] w - ((eta / batchSize) * nw);
+            biases = [(b,nb) in zip(biases,nablaB)] b - ((eta / batchSize) * nb);
+        }
+
+        // weights = [(w,nw) in zip(weights,nablaW)] w - (learningRate * nw);
+        // biases = [(b,nb) in zip(biases,nablaB)] b - (learningRate * nb);
+    }
+
 }
 
 
@@ -213,6 +232,8 @@ proc main() {
         writeln("Epoch: ", i);
 
         shuffle(shuffledData);
+        var cached = [(x,y) in shuffledData] (lina.vectorToMatrix(x), lina.vectorToMatrix(y));
+        // net.train(cached, learningRate);
 
         var cost = 0.0;
         for (x, y) in shuffledData {
@@ -222,6 +243,7 @@ proc main() {
             cost += net.costM(X,Y);
             net.adjust(x, y, learningRate);
         }
+
 
         var globalCost = cost / data.domain.size;
         writeln("Cost: ",globalCost);

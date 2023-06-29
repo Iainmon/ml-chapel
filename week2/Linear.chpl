@@ -61,10 +61,10 @@ record Matrix {
     }
 
     // create initializer that accepts an iterator
-    proc init(expr) {
-        var A = expr;
-        this.init(A);
-    }
+    // proc init(expr) {
+    //     var A = expr;
+    //     this.init(A);
+    // }
 
 
     proc matrix { return underlyingMatrix; }
@@ -149,6 +149,19 @@ record Matrix {
     proc dot(rhs: [?d] eltType) {
         var B = new Matrix(rhs);
         return new Matrix(LA.dot(this.matrix,B.matrix));
+    }
+
+    proc vector {
+        if this.isVector {
+            var (m,n) = this.shape;
+            var vec: [0..#m] eltType;
+            for i in 0..<m {
+                vec[i] = this.underlyingMatrix[i,0];
+            }
+            return vec;
+        } else {
+            halt("Error: matrix is not a vector.");
+        }
     }
 }
 
