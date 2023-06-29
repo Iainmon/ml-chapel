@@ -123,7 +123,7 @@ record Matrix {
     operator *(r: real, m: Matrix(real)) {
         var A = r * m.matrix;
         // writeln((m.matrix * r).type:string);
-        return new Matrix(r * m.matrix);
+        return new Matrix(A);
     }
 
     operator *=(ref lhs: Matrix, const ref rhs: Matrix) {

@@ -58,11 +58,11 @@ class Network {
         biasesDomain = layerSizes.domain[0..#(numLayers - 1)]; //.translate(-1);
         weightsDomain = {0..#(numLayers - 1)};
 
-        biases = [y in biasesDomain] lina.random(layerSizes[y + 1],1); // [y in layerSizes[1..]] :real;
+        biases = [y in biasesDomain] lina.zeros(layerSizes[y + 1],1);// lina.random(layerSizes[y + 1],1);
         weights = makeMatrices(layerSizes);
 
-        writeln("Biases: ", biases);
-        writeln("Weights: ", weights);
+        // writeln("Biases: ", biases);
+        // writeln("Weights: ", weights);
     }
 
     proc feedForward(a: [?d] real) {
@@ -74,7 +74,7 @@ class Network {
         for (B, W) in zip(biases,weights) {
             var X = W.dot(A) + B;
             var v = activation(X.matrix);
-            A = new lina.Matrix(v);
+            A = new lina.Matrix(v); // Very slow
         }
         return A;
     }
@@ -89,25 +89,26 @@ class Network {
         return new lina.Matrix(ys);
     }
 
-    proc activationDerivative(x: real): real {
-        return 1 / (cosh(x)**2);// 1 - tanh(x)**2;
+    proc activationDerivative(x: real): real(64) {
+        var y = tanh(x);
+        return 1.0 - (y * y); // 1.0 / (cosh(x)**2.0);// 1 - tanh(x)**2;
     }
 
-    proc activationDerivativeM(X: lina.Matrix(real)): lina.Matrix(real) {
+    proc activationDerivativeM(X: lina.Matrix(real)): lina.Matrix(real(64)) {
         var ys = activationDerivative(X.matrix);
         return new lina.Matrix(ys);
     }
 
-    proc cost(input: [?d] real, expected_output: [d] real): real {
+    proc cost(input: [?d] real, expected_output: [d] real): real(64) {
         var output = feedForward(input);
-        return 0.5 * norm(output - expected_output)**2;
+        return 0.5 * norm(output - expected_output)**2.0;
     }
 
-    proc costM(input: lina.Matrix(real), expected: lina.Matrix(real)): real {
+    proc costM(input: lina.Matrix(real(64)), expected: lina.Matrix(real(64))): real(64) {
         var output = feedForwardM(input);
         var A = output.matrix - expected.matrix;
-        return + reduce A**2;
-        // return 0.5 * LA.norm(A)**2;
+        // return + reduce A**2.0;
+        return 0.5 * LA.norm(A)**2.0;
     }
 
     proc costDerivative(output: [?d1] real, expected_output: [?d2] real) {
@@ -191,10 +192,10 @@ proc main() {
         ([1.0,1.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,1.0,0.0]),
         ([1.0,1.0,1.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0])
     ];
-    var d1Array = [0,0,0]:real;
-    writeln(d1Array);
+    // var d1Array = [0,0,0]:real;
+    // writeln(d1Array);
 
-    halt(0);
+    // halt(0);
 
     var net = new Network([3,8,8,8]);
 
