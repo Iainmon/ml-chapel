@@ -4,18 +4,16 @@ import Chai as chai;
 use List;
 use Random;
 
-use Random;
+import Random;
 
 
 writeln("Loading data...");
 
-const numImages = 50;
+const numImages = 20;
 
 var images = load.loadImages(numImages);
 var (labels,labelVectors) = load.loadLabels(numImages);
 writeln(labels);
-// for lv in labelVectors do
-//     writeln(lv);
 
 
 var imageVectorDomain = {0..#(28 * 28)};
@@ -24,15 +22,16 @@ var labelVectorDomain = {0..9};
 var imageVectors: [images.domain] [imageVectorDomain] real;
 for i in images.domain {
     for (m,n) in images[i].domain {
-        imageVectors[i][m * 28 + n] = images[i][m,n];
+        var r = chai.rng.getNext() / 1000.0;
+        imageVectors[i][m * 28 + n] = images[i][m,n] + r;
     }
 }
 
 
-var dataList = new list(([imageVectorDomain] real, [labelVectorDomain] real));
-for i in images.domain {
-    dataList.pushBack((imageVectors[i], labelVectors[i]));
-}
+// var dataList = new list(([imageVectorDomain] real, [labelVectorDomain] real));
+// for i in images.domain {
+//     dataList.pushBack((imageVectors[i], labelVectors[i]));
+// }
 var data = [(iv,lv) in zip(imageVectors,labelVectors)] (iv,lv); // dataList.toArray();
 
 
@@ -42,15 +41,15 @@ writeln("Data: ", data.domain);
 
 writeln("Creating network...");
 // var (train,test) = chai.split(data,0.8);
-const layerDimensions = [imageVectorDomain.size,1000,1000, labelVectorDomain.size];
+const layerDimensions = [imageVectorDomain.size, 50,labelVectorDomain.size];
 var net = new chai.Network(layerDimensions);
 
 
 writeln("Training network...");
 
 
-const learningRate = 0.1;
-// const decay = 0.01;
+const learningRate = 0.05;
+const decay = 0.1;
 const epochs = 100000;
 
 var shuffledData = data;
@@ -60,14 +59,14 @@ var lastCost = 1.0;
 for i in 1..epochs {
     writeln("Epoch: ", i);
 
-    // for (x, y) in data {
-    //     writeln("Input: [image] Expected: ", y, " Output: ", net.feedForward(x).transpose().matrix);
-    // }
+//     for (x, y) in data {
+//     writeln("Input: [image] Expected: ", y, " Output: ", net.feedForward(x).transpose().matrix);
+// }
 
     shuffle(shuffledData);
     var cached = [(x,y) in shuffledData] (lina.vectorToMatrix(x), lina.vectorToMatrix(y));
 
-    var lr = learningRate; //* abs(lina.random(1,1).matrix[0,0]);//* exp(- decay * i:real);
+    var lr = learningRate; //* abs(lina.random(1,1).matrix[0,0]);//* ;
     var trainData = cached;
     // net.train(trainData, lr);
 
@@ -81,7 +80,7 @@ for i in 1..epochs {
         // writeln("LocalCost: ",localCost);
         // cost += localCost;
         cost += net.costM(X,Y);
-        net.adjust(x, y, lr);
+        net.adjust(x, y, lr,0.1 * exp(- decay * i:real));
     }
 
     var globalCost = cost / (data.domain.size: real);

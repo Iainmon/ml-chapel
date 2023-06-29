@@ -88,3 +88,9 @@ writeln(access(xs,10));
 
 for i in 2..3 do
     writeln(i);
+
+var a1 = [1,2,3];
+var a2 = a1;
+a2[0] = 5;
+
+writeln(a1);

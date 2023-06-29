@@ -111,6 +111,10 @@ record Matrix {
     operator +(lhs: eltType, rhs: Matrix) do
         return new Matrix(lhs + rhs.matrix);
 
+    operator +=(ref lhs: Matrix, const ref rhs: Matrix) {
+        lhs.underlyingMatrix += rhs.underlyingMatrix;
+    }
+
     operator -(lhs: Matrix, rhs: Matrix) {
         var A = lhs.matrix - rhs.matrix;
         return new Matrix(A);

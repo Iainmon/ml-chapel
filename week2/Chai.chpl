@@ -36,6 +36,8 @@ proc access(ref xs: list(?etlType), i: int) ref {
     return xs[d.orderToIndex((d.size + i) % d.size)];
 }
 
+var rng = new Random.RandomStream(eltType=real(64));
+
 class Network {
     var layerSizesDomain = {0..2};
     var layerSizes: [layerSizesDomain] int;
@@ -161,8 +163,16 @@ class Network {
 
     }
 
-    proc adjust(x: [?d1] real, y: [?d2] real, learningRate: real) {
+    proc adjust(x: [?d1] real, y: [?d2] real, learningRate: real, scholasticScale: real = 0.01) {
         var (nablaB,nablaW) = backprop(x, y);
+        for nb in nablaB {
+            var nbRNG = lina.random(nb.shape[0],nb.shape[1]);
+            nb += scholasticScale * nbRNG;
+        }
+        for nw in nablaW {
+            var nwRNG = lina.random(nw.shape[0],nw.shape[1]);
+            nw += scholasticScale * nwRNG;
+        }
         weights = [(w,nw) in zip(weights,nablaW)] w - (learningRate * nw);
         biases = [(b,nb) in zip(biases,nablaB)] b - (learningRate * nb);
     }
@@ -216,7 +226,7 @@ proc main() {
 
     // halt(0);
 
-    var net = new Network([3,8,8,8]);
+    var net = new Network([3,20,20,8]);
 
     writeln(net);
     writeln("Biases: ", net.biases);
