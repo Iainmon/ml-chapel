@@ -83,7 +83,8 @@ class Network {
 
 
     proc activation(x: real): real {
-        return tanh(x);
+        return 1.0 / (1.0 + exp(-x));
+        // return tanh(x);
     }
 
     proc activationM(X: lina.Matrix(real)): lina.Matrix(real) {
@@ -92,8 +93,10 @@ class Network {
     }
 
     proc activationDerivative(x: real): real(64) {
-        var y = tanh(x);
-        return 1.0 - (y * y); // 1.0 / (cosh(x)**2.0);// 1 - tanh(x)**2;
+        var sx = activation(x);
+        return sx * (1.0 - sx);
+        // var y = tanh(x);
+        // return 1.0 - (y * y); // 1.0 / (cosh(x)**2.0);// 1 - tanh(x)**2;
     }
 
     proc activationDerivativeM(X: lina.Matrix(real)): lina.Matrix(real(64)) {
@@ -226,7 +229,7 @@ proc main() {
 
     // halt(0);
 
-    var net = new Network([3,20,20,8]);
+    var net = new Network([3,8,8,8]);
 
     writeln(net);
     writeln("Biases: ", net.biases);
@@ -251,7 +254,7 @@ proc main() {
             var X = lina.vectorToMatrix(x);
             var Y = lina.vectorToMatrix(y);
             cost += net.costM(X,Y);
-            net.adjust(x, y, learningRate);
+            net.adjust(x, y, learningRate, 0.0);
         }
 
 

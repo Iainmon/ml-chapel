@@ -9,7 +9,7 @@ import Random;
 
 writeln("Loading data...");
 
-const numImages = 20;
+const numImages = 50;
 
 var images = load.loadImages(numImages);
 var (labels,labelVectors) = load.loadLabels(numImages);
@@ -41,20 +41,21 @@ writeln("Data: ", data.domain);
 
 writeln("Creating network...");
 // var (train,test) = chai.split(data,0.8);
-const layerDimensions = [imageVectorDomain.size, 50,labelVectorDomain.size];
+const layerDimensions = [imageVectorDomain.size, 100,labelVectorDomain.size];
 var net = new chai.Network(layerDimensions);
 
 
 writeln("Training network...");
 
 
-const learningRate = 0.05;
-const decay = 0.1;
+const learningRate = 0.1; // 0.05
+const decay = 0.01; // 0.1
+const initialVariance = 0.1; // 0.1
 const epochs = 100000;
 
 var shuffledData = data;
 // var cached = [(x,y) in shuffledData] (lina.vectorToMatrix(x), lina.vectorToMatrix(y));
-
+var costDiff = 1.0;
 var lastCost = 1.0;
 for i in 1..epochs {
     writeln("Epoch: ", i);
@@ -69,7 +70,7 @@ for i in 1..epochs {
     var lr = learningRate; //* abs(lina.random(1,1).matrix[0,0]);//* ;
     var trainData = cached;
     // net.train(trainData, lr);
-
+    var eta = initialVariance * exp(- decay * i:real);
     var cost = 0.0;
     for ((x, y),(X,Y)) in zip(shuffledData, cached) {
         // writeln("Input: ", x, " Expected: ", y, " Output: ", net.feedForward(x).transpose().matrix);
@@ -80,17 +81,17 @@ for i in 1..epochs {
         // writeln("LocalCost: ",localCost);
         // cost += localCost;
         cost += net.costM(X,Y);
-        net.adjust(x, y, lr,0.1 * exp(- decay * i:real));
+        net.adjust(x, y, lr, eta);
     }
 
     var globalCost = cost / (data.domain.size: real);
-    writeln("GobalCost: ",globalCost, " (", cost, ")", " LearningRate: ", lr);
+    writeln("GobalCost: ",globalCost, " (", cost, ")", " LearningRate: ", lr, " Eta: ", eta);
 
     if globalCost <= 0.005 {
         writeln("I think that's enough...");
         break;
     }
-
+    costDiff = abs(globalCost - lastCost);
     lastCost = globalCost;
     // writeln("Frustration: ", frustration);
     // frustration += 1 / (((cost - lastCost) + 0.001) * patience);
