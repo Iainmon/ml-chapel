@@ -1,4 +1,4 @@
-module Chai {
+module NewChai {
 
 use Random;
 import LinearAlgebra as LA;
@@ -6,6 +6,8 @@ use Math;
 use List;
 import Linear as lina;
 use ChaiHelpers;
+// import ChapelIO;
+use IO.FormattedIO;
 
 
 iter makeMatrices(layerSizes: [?d] int) {
@@ -32,8 +34,8 @@ class Network {
     var biasesDomain = {0..2};
     var weightsDomain = {0..1};
 
-    var biases: [biasesDomain] lina.Matrix(real);
-    var weights: [weightsDomain] lina.Matrix(real);
+    var biases: [biasesDomain] lina.Matrix(real(64));
+    var weights: [weightsDomain] lina.Matrix(real(64));
 
     // constructor
     proc init(layerSizes: [?d] int) {
@@ -53,11 +55,11 @@ class Network {
         // writeln("Weights: ", weights);
     }
 
-    proc feedForward(a: [?d] real) {
+    proc feedForward(a: [?d] real(64)) {
         return feedForwardM(lina.vectorToMatrix(a));
     }
 
-    proc feedForwardM(A_: lina.Matrix(real)): lina.Matrix(real) {
+    proc feedForwardM(A_: lina.Matrix(real(64))): lina.Matrix(real(64)) {
         var A: lina.Matrix(real) = A_;
         for (B, W) in zip(biases,weights) {
             var X = W.dot(A) + B;
@@ -68,7 +70,7 @@ class Network {
     }
 
 
-    proc backprop(X: lina.Matrix(real), Y: lina.Matrix(real)) {
+    proc backprop(X: lina.Matrix(real(64)), Y: lina.Matrix(real(64))) {
 
         // var X = lina.vectorToMatrix(x);
         // var Y = lina.vectorToMatrix(y);
@@ -82,9 +84,9 @@ class Network {
 
 
         var A = X;
-        var As: list(lina.Matrix(real)) = new list(lina.Matrix(real));
+        var As: list(lina.Matrix(real(64))) = new list(lina.Matrix(real(64)));
         As.append(A);
-        var Zs: list(lina.Matrix(real)) = new list(lina.Matrix(real));
+        var Zs: list(lina.Matrix(real(64))) = new list(lina.Matrix(real(64)));
 
         for (B, W) in zip(biases, weights) {
             var Z = W.dot(A) + B;
@@ -116,7 +118,7 @@ class Network {
 
     }
 
-    proc updateBatch(batch: [?d] (lina.Matrix(real),lina.Matrix(real)), eta: real) {
+    proc updateBatch(batch: [?d] (lina.Matrix(real(64)),lina.Matrix(real(64))), eta: real(64)) {
         var nablaB = [b in biases] lina.zeros(b.shape[0],b.shape[1]);
         var nablaW = [w in weights] lina.zeros(w.shape[0],w.shape[1]);
         for (x,y) in batch {
@@ -198,7 +200,7 @@ proc main() {
     var net = new Network([2,20,4]);
 */
 
-    var data: [0..7] ([0..2] real, [0..7] real) = [
+    var data: [0..7] ([0..2] real(64), [0..7] real(64)) = [
         ([0.0,0.0,0.0],[1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]),
         ([0.0,0.0,1.0],[0.0,1.0,0.0,0.0,0.0,0.0,0.0,0.0]),
         ([0.0,1.0,0.0],[0.0,0.0,1.0,0.0,0.0,0.0,0.0,0.0]),
@@ -213,13 +215,24 @@ proc main() {
 
     // halt(0);
 
-    var net = new Network([3,12,8]);
+    var net = new Network([3,20,8]);
 
     writeln(net);
     writeln("Biases: ", [ b in net.biases] b.shape);
     writeln("Weights: ", [w in net.weights] w.shape);
 
-    var learningRate = 0.1;
+    for i in 0..80000 {
+        var ir = (i: real(64)) / 1000.0;
+        var y: real(64) = sigmoid(ir);
+        ChapelIO.writef("(%dr,%20.30r)\n", ir, y);
+        // writeln("(", i, ",", y ,")");
+        if y == 1.0 {
+            writeln("Stopped at ", i);
+            break;
+        }
+    }
+
+    var learningRate = 3.0;
     var patience = 10.0;
     var frustration = 0.0;
     var lastCost = 0.0;
@@ -233,7 +246,8 @@ proc main() {
         // net.train(cached, learningRate);
 
         net.updateBatch(vectorizedData, learningRate);
-        var cost = 0.0;
+
+        var cost: real(64) = 0.0;
         for (X,Y) in vectorizedData {
             // writeln("Input: ", x, " Expected: ", y, " Output: ", net.feedForward(x).transpose().matrix);
             var Z = net.feedForwardM(X);
@@ -241,8 +255,9 @@ proc main() {
         }
 
 
-        var globalCost = cost / data.domain.size;
-        writeln("Cost: ",globalCost);
+        var globalCost: real(64) = cost * (1.0 / (data.domain.size : real(64)));
+        // writeln("Cost: ",globalCost);
+        ChapelIO.writef("Cost: %20.30r\n", globalCost);
 
         if globalCost <= 0.005 {
             writeln("I think that's enough...");

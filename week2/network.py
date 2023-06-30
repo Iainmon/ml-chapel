@@ -145,7 +145,53 @@ def sigmoid_prime(z):
     return sigmoid(z)*(1-sigmoid(z))
 
 
-net = Network([3, 12, 8])
+
+# for i in -100000..100000 {
+#     var ir = (i: real(64)) / 1000.0;
+#     var y = sigmoid(ir);
+#     writeln("(", i, ",", y ,")");
+# }
+
+for i in range(80000):
+    ir = i / 1000.0
+    y = sigmoid(ir)
+    print("(", i, ",", y ,")")
+    if y == 1.0:
+        print("Stopped at ", i)
+        break
+
+exit(0)
+
+data = [
+    ([0.0,0.0,0.0],[1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]),
+    ([0.0,0.0,1.0],[0.0,1.0,0.0,0.0,0.0,0.0,0.0,0.0]),
+    ([0.0,1.0,0.0],[0.0,0.0,1.0,0.0,0.0,0.0,0.0,0.0]),
+    ([0.0,1.0,1.0],[0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0]),
+    ([1.0,0.0,0.0],[0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0]),
+    ([1.0,0.0,1.0],[0.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0]),
+    ([1.0,1.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,1.0,0.0]),
+    ([1.0,1.0,1.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0])
+]
+
+data = [(np.reshape(x, (3, 1)), np.reshape(y, (8, 1))) for x, y in data]
+
+net = Network([3, 100, 100, 8])
 
 print("Biases: ", [b.shape for b in net.biases])
 print("Weights: ", [w.shape for w in net.weights])
+
+epochs = 10000
+learning_rate = 0.1
+
+for i in range(epochs):
+    print("Epoch: ", i)
+
+    np.random.shuffle(data)
+
+    net.update_mini_batch(data, learning_rate)
+
+    cost = 0.0
+    for x, y in data:
+        cost += net.cost(net.feedforward(x), y)
+
+    print("Cost: ", cost)

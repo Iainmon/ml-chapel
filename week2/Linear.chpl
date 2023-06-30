@@ -45,7 +45,12 @@ record Matrix {
     proc init(A: [?d] ?t, type eltType) {
         var B: [d] eltType;
         for i in d {
-            B[i] = A[i]:eltType;
+            if t == real(64) {
+                B[i] = A[i];
+            } else {
+                writeln("ran conversion!");
+                B[i] = A[i]:eltType;
+            }
         }
         var m = new Matrix(B);
         this.eltType = eltType;
@@ -130,7 +135,7 @@ record Matrix {
         var A = lhs.matrix * rhs.matrix;
         return new Matrix(A);
     } 
-    operator *(r: real, m: Matrix(real)) {
+    operator *(r: real(64), m: Matrix(real(64))) {
         var A = r * m.matrix;
         // writeln((m.matrix * r).type:string);
         return new Matrix(A);
@@ -189,8 +194,14 @@ record Matrix {
 proc matrixFromRows(arrays ...?n, type eltType) {
     var d = {0..#(arrays.size), 0..#(arrays[0].domain.size)};
     var A = LA.Matrix(d,eltType);
-    foreach (i,j) in d do
-        A[i,j] = arrays[i][j] : eltType;
+    foreach (i,j) in d {
+        if arrays[i][j].type == real {
+            A[i,j] = arrays[i][j];
+        } else {
+            A[i,j] = arrays[i][j] : eltType;
+            writeln("ran conversion!");
+        }
+    }
     return new Matrix(A);
 }
 
@@ -202,29 +213,29 @@ proc matrixFromColumns(arrays ...?n, type eltType) {
     return new Matrix(A);
 }
 
-proc vectorToMatrix(vector: [?d] ?t, type eltType=real) where d.rank == 1 {
+proc vectorToMatrix(vector: [?d] ?t, type eltType=real(64)) where d.rank == 1 {
     return new Matrix(vector,eltType);
 }
 
 
-proc zeros(m: int, n: int, type eltType=real) {
+proc zeros(m: int, n: int, type eltType=real(64)) {
     var A = LA.Matrix(m,n,eltType);
     return new Matrix(A);
 }
 
-proc zeroVector(n: int, type eltType=real) {
+proc zeroVector(n: int, type eltType=real(64)) {
     var A = LA.Vector(n,eltType);
     return new Matrix(A);
 }
 
-proc random(m: int, n: int, type eltType=real) {
+proc random(m: int, n: int, type eltType=real(64)) {
     var A = LA.Matrix(m,n,eltType);
     var rng = new owned Random.RandomStream(eltType=eltType);
     rng.fillRandom(A);
     return new Matrix(A);
 }
 
-proc randomVector(n: int, type eltType=real) {
+proc randomVector(n: int, type eltType=real(64)) {
     var A = LA.Vector(n,eltType);
     var rng = new owned Random.RandomStream(eltType=eltType);
     rng.fillRandom(A);

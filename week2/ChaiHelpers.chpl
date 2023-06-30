@@ -1,9 +1,10 @@
 
 use Random;
 import LinearAlgebra as LA;
-use Math;
+// use Math;
 use List;
 import Linear as lina;
+import Math;
 
 proc list.get(i: int) ref { return this[mod(i,this.size)]; }
 proc list.getIdx(i: int) { return mod(i,this.size); }
@@ -14,9 +15,10 @@ proc getIdx(xs: [?d] ?t, i: int) {
 
 /* Sigmoid functions */
 
-proc sigmoid(x: real(64)): real(64) do
-    return 1.0 / (1.0 + exp(-x));
-
+proc sigmoid(x: real(64)): real(64) {
+    // return 1.0 / (1.0 + Math.exp(-x));
+    return (Math.exp(x) / (Math.exp(x) + 1.0)) + 0.001;
+}
 proc sigmoidM(m: lina.Matrix(real(64))): lina.Matrix(real(64)) {
     var A = sigmoid(m.matrix);
     return new lina.Matrix(A);
@@ -24,7 +26,7 @@ proc sigmoidM(m: lina.Matrix(real(64))): lina.Matrix(real(64)) {
 
 proc sigmoidPrime(x: real(64)): real(64) {
     var sig = sigmoid(x);
-    return sig * (1.0 - sig);
+    return sig * (1.001 - sig);
 }
 
 proc sigmoidPrimeM(m: lina.Matrix(real(64))): lina.Matrix(real(64)) {
