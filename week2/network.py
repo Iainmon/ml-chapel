@@ -32,8 +32,7 @@ class Network(object):
         self.num_layers = len(sizes)
         self.sizes = sizes
         self.biases = [np.random.randn(y, 1) for y in sizes[1:]]
-        self.weights = [np.random.randn(y, x)
-                        for x, y in zip(sizes[:-1], sizes[1:])]
+        self.weights = [np.random.randn(y, x) for x, y in zip(sizes[:-1], sizes[1:])]
 
     def feedforward(self, a):
         """Return the output of the network if ``a`` is input."""
@@ -112,9 +111,9 @@ class Network(object):
         for l in range(2, self.num_layers):
             z = zs[-l]
             sp = sigmoid_prime(z)
-            delta = np.dot(self.weights[-l+1].transpose(), delta) * sp
+            delta = np.dot(self.weights[(-l)+1].transpose(), delta) * sp
             nabla_b[-l] = delta
-            nabla_w[-l] = np.dot(delta, activations[-l-1].transpose())
+            nabla_w[-l] = np.dot(delta, activations[(-l)-1].transpose())
         return (nabla_b, nabla_w)
 
     def evaluate(self, test_data):
@@ -134,7 +133,7 @@ class Network(object):
     def cost(self, output_activations, y):
         
         """Return the cost associated with an output compared to desired output."""
-        return 0.5*np.linalg.norm(output_activations-y)**2
+        return 0.5*(np.linalg.norm(output_activations-y)**2)
 
 #### Miscellaneous functions
 def sigmoid(z):
@@ -144,3 +143,9 @@ def sigmoid(z):
 def sigmoid_prime(z):
     """Derivative of the sigmoid function."""
     return sigmoid(z)*(1-sigmoid(z))
+
+
+net = Network([3, 12, 8])
+
+print("Biases: ", [b.shape for b in net.biases])
+print("Weights: ", [w.shape for w in net.weights])

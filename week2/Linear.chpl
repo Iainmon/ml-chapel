@@ -54,6 +54,12 @@ record Matrix {
         this.isVector = m.isVector;
     }
 
+    proc copy() {
+        var A = new Matrix(this.underlyingMatrix);
+        A.isVector = this.isVector;
+        return A;
+    }
+
     proc init(type eltType) {
         this.eltType = eltType;
         matrixDomain = {0..1, 0..1};
@@ -167,6 +173,17 @@ record Matrix {
             halt("Error: matrix is not a vector.");
         }
     }
+
+    proc frobeniusNorm() {
+        var AA = this.underlyingMatrix ** 2.0;
+        var sum = + reduce AA;
+        return sqrt(sum);
+    }
+    proc frobeniusNormPowTwo() {
+        var AA = this.underlyingMatrix ** 2.0;
+        var sum = + reduce AA;
+        return sum;
+    }
 }
 
 proc matrixFromRows(arrays ...?n, type eltType) {
@@ -213,6 +230,8 @@ proc randomVector(n: int, type eltType=real) {
     rng.fillRandom(A);
     return new Matrix(A);
 }
+
+
 
 
 
