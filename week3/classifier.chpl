@@ -10,7 +10,7 @@ import Random;
 
 writeln("Loading data...");
 
-const numImages = 50;
+config const numImages = 50;
 
 var images = MNIST.loadImages(numImages);
 var (labels,labelVectors) = MNIST.loadLabels(numImages);
@@ -42,17 +42,19 @@ writeln("Data: ", data.domain);
 
 writeln("Creating network...");
 // var (train,test) = chai.split(data,0.8);
-const layerDimensions = [imageVectorDomain.size,100,100,labelVectorDomain.size]; // [imageVectorDomain.size, 100,100,30,labelVectorDomain.size];
+const layerDimensions = [imageVectorDomain.size,200,80,labelVectorDomain.size]; // [imageVectorDomain.size, 100,100,30,labelVectorDomain.size];
 var net = new chai.Network(layerDimensions);
 
 
 writeln("Training network...");
 
+// writeln(lina.randn(10,1));
+// halt(0);
 
-const learningRate = 0.5; // 0.05
+const learningRate = 0.8; // 0.05
 const decay = 0.9; // 0.1
 const initialVariance = 0.1; // 0.1
-const epochs = 4000;
+const epochs = 8000;
 
 var shuffledData = data;
 // var cached = [(x,y) in shuffledData] (lina.vectorToMatrix(x), lina.vectorToMatrix(y));
@@ -68,10 +70,10 @@ for i in 1..epochs {
     shuffle(shuffledData);
     var cached = [(x,y) in shuffledData] (lina.vectorToMatrix(x), lina.vectorToMatrix(y));
 
-    if i % 50 == 0 {
+    if i % 100 == 0 {
         for (X,Y) in cached {
             var Z = net.feedForwardM(X);
-            writeln("Input: [image] Expected: ", Y.transpose().matrix, " Output: ", Z.transpose().matrix);
+            writeln("Input: [image] Expected: ", Y.transpose().matrix, " Output: ", Z.transpose().matrix, " (",lina.argmax(Y.transpose())," , ", lina.argmax(Z.transpose()), ")");
         }
     }
 

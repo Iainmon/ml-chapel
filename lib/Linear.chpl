@@ -11,7 +11,7 @@ module Linear {
 import LinearAlgebra as LA;
 import IO;
 import Random;
-
+import Math;
 
 
 
@@ -169,7 +169,20 @@ record Matrix {
 
 
     proc vector {
-        if this.isVector {
+        var (m,n) = this.shape;
+        if m == 1 {
+            var vec: [0..#n] eltType;
+            for i in 0..<n {
+                vec[i] = this.underlyingMatrix[0,i];
+            }
+            return vec;
+        } else if n == 1 {
+            var vec: [0..#m] eltType;
+            for i in 0..<m {
+                vec[i] = this.underlyingMatrix[i,0];
+            }
+            return vec;
+        } else if this.isVector {
             var (m,n) = this.shape;
             var vec: [0..#m] eltType;
             for i in 0..<m {
@@ -230,24 +243,37 @@ proc zeroVector(n: int, type eltType=real(64)) {
     return new Matrix(A);
 }
 
-
 proc random(m: int, n: int, type eltType=real(64)) {
     var A = LA.Matrix(m,n,eltType);
     var rng = new owned Random.RandomStream(eltType=eltType);
     rng.fillRandom(A);
+    A = 2.0 * (A - 0.5);
     return new Matrix(A);
 }
 
-proc normal(x: ?t) {
-    const c = (Math.sqrt_2 * Math.sqrt_pi) / (2.0 * Math.pi);
-    return c * Math.exp(-0.5 * x * x);
+
+proc boxMuller(mu: real, sigma: real) {
+    var rng = new owned Random.RandomStream(eltType=real(64));
+    var u1 = rng.getNext();
+    var u2 = rng.getNext();
+    var z0 = sqrt(-2.0 * log(u1)) * cos(2.0 * Math.pi * u2);
+    return mu + (sigma * z0);
+}
+
+proc normal() {
+    // param sqrt_pi = 1.7724538509055160272981;
+    // const c = (Math.sqrt_2 * sqrt_pi) / (2.0 * Math.pi);
+    // return c * Math.exp(-0.5 * x * x);
+
+    return boxMuller(0.0,1.0);
+
 }
 
 proc randn(m: int, n: int, type eltType=real(64)) {
     var A = LA.Matrix(m,n,eltType);
-    var rng = new owned Random.RandomStream(eltType=eltType);
-    rng.fillRandom(A);
-    A = normal(A);
+    for (i,j) in A.domain {
+        A[i,j] = normal();
+    }
     return new Matrix(A);
 }
 
@@ -259,7 +285,18 @@ proc randomVector(n: int, type eltType=real(64)) {
     return new Matrix(A);
 }
 
-
+proc argmax(m: Matrix(real)) {
+    var v = m.vector;
+    var max = v[0];
+    var argmax = 0;
+    for i in v.domain {
+        if v[i] > max {
+            max = v[i];
+            argmax = i;
+        }
+    }
+    return argmax;
+}
 
 
 

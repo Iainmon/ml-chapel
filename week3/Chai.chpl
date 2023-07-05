@@ -48,10 +48,10 @@ class Network {
         biasesDomain = layerSizes.domain[0..#(numLayers - 1)]; //.translate(-1);
         weightsDomain = {0..#(numLayers - 1)};
 
-        biases = [y in biasesDomain] lina.zeros(layerSizes[y + 1],1);
-        weights = [i in weightsDomain] (1.0 / (layerSizes[i + 1] * layerSizes[i])) * lina.random(layerSizes[i + 1], layerSizes[i]); // makeMatrices(layerSizes);
+        biases = [y in biasesDomain] lina.randn(layerSizes[y + 1],1);
+        // weights = [i in weightsDomain] (1.0 / (layerSizes[i + 1] * layerSizes[i])) * lina.random(layerSizes[i + 1], layerSizes[i]); // makeMatrices(layerSizes);
 
-        // weights = [i in weightsDomain] (1.0 / (layerSizes[i + 1] * layerSizes[i])) * lina.randn(layerSizes[i + 1], layerSizes[i]); // makeMatrices(layerSizes);
+        weights = [i in weightsDomain] lina.randn(layerSizes[i + 1], layerSizes[i]); // makeMatrices(layerSizes);
 
         // writeln("Biases: ", biases);
         // writeln("Weights: ", weights);
