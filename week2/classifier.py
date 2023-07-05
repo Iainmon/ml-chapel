@@ -27,9 +27,10 @@ for i, l in enumerate(label_vetctors):
 
 training_data = list(zip(image_vectors, label_vetctors))
 
+training_data = training_data[:50]
 
 
-net = network.Network([784,100, 10])
+net = network.Network([784,500,500,500, 10])
 
 
 # train the network
@@ -43,7 +44,10 @@ for epoch in range(epochs):
     cost = 0
     for x, y in training_data:
         # calculate cost for printing
+
         output_activations = net.feedforward(x)
+        # np.argmax(output_activations)
+        print(list(output_activations.transpose()[0]))
         local_cost = net.cost(output_activations, y)
         cost += local_cost
 

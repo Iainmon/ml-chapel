@@ -4,7 +4,7 @@ use IO;
 use BinaryIO;
 
 proc loadImages(num: int) {
-    const fileName = "week2/emnist/data/train-images-idx3-ubyte";
+    const fileName = "lib/mnist/data/train-images-idx3-ubyte";
 
     var deserializer = new BinaryDeserializer(ioendian.big);
 

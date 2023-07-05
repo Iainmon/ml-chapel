@@ -152,46 +152,47 @@ def sigmoid_prime(z):
 #     writeln("(", i, ",", y ,")");
 # }
 
-for i in range(80000):
-    ir = i / 1000.0
-    y = sigmoid(ir)
-    print("(", i, ",", y ,")")
-    if y == 1.0:
-        print("Stopped at ", i)
-        break
+# for i in range(80000):
+#     ir = i / 1000.0
+#     y = sigmoid(ir)
+#     print("(", i, ",", y ,")")
+#     if y == 1.0:
+#         print("Stopped at ", i)
+#         break
 
-exit(0)
+# exit(0)
+def __main__():
 
-data = [
-    ([0.0,0.0,0.0],[1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]),
-    ([0.0,0.0,1.0],[0.0,1.0,0.0,0.0,0.0,0.0,0.0,0.0]),
-    ([0.0,1.0,0.0],[0.0,0.0,1.0,0.0,0.0,0.0,0.0,0.0]),
-    ([0.0,1.0,1.0],[0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0]),
-    ([1.0,0.0,0.0],[0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0]),
-    ([1.0,0.0,1.0],[0.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0]),
-    ([1.0,1.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,1.0,0.0]),
-    ([1.0,1.0,1.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0])
-]
+    data = [
+        ([0.0,0.0,0.0],[1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]),
+        ([0.0,0.0,1.0],[0.0,1.0,0.0,0.0,0.0,0.0,0.0,0.0]),
+        ([0.0,1.0,0.0],[0.0,0.0,1.0,0.0,0.0,0.0,0.0,0.0]),
+        ([0.0,1.0,1.0],[0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0]),
+        ([1.0,0.0,0.0],[0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0]),
+        ([1.0,0.0,1.0],[0.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0]),
+        ([1.0,1.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,1.0,0.0]),
+        ([1.0,1.0,1.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0])
+    ]
 
-data = [(np.reshape(x, (3, 1)), np.reshape(y, (8, 1))) for x, y in data]
+    data = [(np.reshape(x, (3, 1)), np.reshape(y, (8, 1))) for x, y in data]
 
-net = Network([3, 100, 100, 8])
+    net = Network([3, 100, 100, 8])
 
-print("Biases: ", [b.shape for b in net.biases])
-print("Weights: ", [w.shape for w in net.weights])
+    print("Biases: ", [b.shape for b in net.biases])
+    print("Weights: ", [w.shape for w in net.weights])
 
-epochs = 10000
-learning_rate = 0.1
+    epochs = 10000
+    learning_rate = 0.1
 
-for i in range(epochs):
-    print("Epoch: ", i)
+    for i in range(epochs):
+        print("Epoch: ", i)
 
-    np.random.shuffle(data)
+        np.random.shuffle(data)
 
-    net.update_mini_batch(data, learning_rate)
+        net.update_mini_batch(data, learning_rate)
 
-    cost = 0.0
-    for x, y in data:
-        cost += net.cost(net.feedforward(x), y)
+        cost = 0.0
+        for x, y in data:
+            cost += net.cost(net.feedforward(x), y)
 
-    print("Cost: ", cost)
+        print("Cost: ", cost)

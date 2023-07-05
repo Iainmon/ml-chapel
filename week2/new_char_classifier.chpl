@@ -42,7 +42,7 @@ writeln("Data: ", data.domain);
 
 writeln("Creating network...");
 // var (train,test) = chai.split(data,0.8);
-const layerDimensions = [imageVectorDomain.size, 100,100,30,labelVectorDomain.size];
+const layerDimensions = [imageVectorDomain.size,350,350,labelVectorDomain.size]; // [imageVectorDomain.size, 100,100,30,labelVectorDomain.size];
 var net = new chai.Network(layerDimensions);
 
 
@@ -52,7 +52,7 @@ writeln("Training network...");
 const learningRate = 3.0; // 0.05
 const decay = 0.9; // 0.1
 const initialVariance = 0.1; // 0.1
-const epochs = 100000;
+const epochs = 1000;
 
 var shuffledData = data;
 // var cached = [(x,y) in shuffledData] (lina.vectorToMatrix(x), lina.vectorToMatrix(y));
@@ -67,7 +67,18 @@ for i in 1..epochs {
 
     shuffle(shuffledData);
     var cached = [(x,y) in shuffledData] (lina.vectorToMatrix(x), lina.vectorToMatrix(y));
+
+    for (X,Y) in cached {
+        var Z = net.feedForwardM(X);
+        writeln("Input: [image] Expected: ", Y.transpose().matrix, " Output: ", Z.transpose().matrix);
+    }
+
+
     net.updateBatch(cached,learningRate);
+
+
+
+
     var eta = initialVariance * exp(- decay * i:real);
 
     var lr = learningRate;
@@ -111,7 +122,7 @@ for i in 1..epochs {
 
 writeln("--------------- Results ---------------");
 
-// for (x, y) in data {
-//     writeln("Input: [image] Expected: ", y, " Output: ", net.feedForward(x).transpose().matrix);
-// }
+for (x, y) in data {
+    writeln("Input: [image] Expected: ", y, " Output: ", net.feedForward(x).transpose().matrix);
+}
 
