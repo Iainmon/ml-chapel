@@ -9,6 +9,12 @@ use ChaiHelpers;
 // import ChapelIO;
 use IO.FormattedIO;
 
+import IO;
+import BinaryIO;
+import Json;
+
+
+
 
 iter makeMatrices(layerSizes: [?d] int) {
     for i in d[1..] {
@@ -184,10 +190,64 @@ class Network {
     proc costDerivativeM(output: lina.Matrix(real), expected: lina.Matrix(real)) {
         return output - expected;
     }
+/*
+    override proc serialize(writer: IO.fileWriter(?), ref serializer: writer.serializerType) throws {
+        writer.write(this.layerSizesDomain);
+        writer.write(this.layerSizes);
+        writer.write(this.numLayers);
+        writer.write(this.biasesDomain);
+        writer.write(this.weightsDomain);
+        writer.write(this.biases);
+        writer.write(this.weights);
+    }
+    proc init(reader: IO.fileReader(?), ref deserializer: reader.deserializerType) throws {
+        // this.layerSizesDomain = reader.read(deserializer=deserializer);
+        try! {
+            this.layerSizesDomain = deserializer.deserializeType(reader,domain(1,int));
+            this.layerSizes = deserializer.deserializeType(reader,[this.layerSizesDomain] int);
+            this.numLayers = deserializer.deserializeType(reader,int);
+            this.biasesDomain = deserializer.deserializeType(reader,domain(1,int));
+            this.weightsDomain = deserializer.deserializeType(reader,domain(1,int));
+            this.biases = deserializer.deserializeType(reader,[this.biasesDomain] lina.Matrix(real));
+            this.weights = deserializer.deserializeType(reader,[this.weightsDomain] lina.Matrix(real));
+        }
+    }
+*/
+}
+/*
+proc exportModel(net: Network, filename: string) {
+    try {
+        var serializer = new BinaryIO.BinarySerializer();
+        // var serializer = new Json.JsonSerializer();
+
+        var fw = IO.openWriter(filename, serializer=serializer);
+        fw.write(net);// net.serialize(fw, serializer);
+        fw.close();
+        writeln("Model exported to ", filename);
+    } catch e {
+        writeln("Could not export model to ", filename);
+        writeln("Error: ", e);
+    }
 
 }
 
+proc loadModel(filename: string) {
+    try {
+        var deserializer = new BinaryIO.BinaryDeserializer();
 
+        // var deserializer = new Json.JsonDeserializer();
+        var fr = IO.openReader(filename, deserializer=deserializer);
+        var net = deserializer.deserializeType(fr, Network);
+        fr.close();
+        return net;
+    } catch e {
+        writeln("Could not load model from ", filename);
+        writeln("Error: ", e);
+        halt(0);
+    }
+}
+
+*/
 
 
 proc main() {

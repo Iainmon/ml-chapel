@@ -27,16 +27,16 @@ for i, l in enumerate(label_vetctors):
 
 training_data = list(zip(image_vectors, label_vetctors))
 
-training_data = training_data[:50]
+training_data = training_data[:20000]
 
 
-net = network.Network([784,500,500,500, 10])
+net = network.Network([784,200,80, 10])
 
 
 # train the network
 
-epochs = 1000
-learning_rate = 0.1
+epochs = 30000
+learning_rate = 0.5
 
 for epoch in range(epochs):
     print(f'Epoch {epoch}')
@@ -47,7 +47,7 @@ for epoch in range(epochs):
 
         output_activations = net.feedforward(x)
         # np.argmax(output_activations)
-        print(list(output_activations.transpose()[0]))
+        # print(list(output_activations.transpose()[0]))
         local_cost = net.cost(output_activations, y)
         cost += local_cost
 

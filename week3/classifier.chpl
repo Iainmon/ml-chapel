@@ -45,6 +45,9 @@ writeln("Creating network...");
 const layerDimensions = [imageVectorDomain.size,200,80,labelVectorDomain.size]; // [imageVectorDomain.size, 100,100,30,labelVectorDomain.size];
 var net = new chai.Network(layerDimensions);
 
+// chai.exportModel(net,"model.bin");
+
+// var net2 = chai.loadModel("model.bin");
 
 writeln("Training network...");
 

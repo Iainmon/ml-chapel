@@ -204,6 +204,22 @@ record Matrix {
         var sum = + reduce AA;
         return sum;
     }
+
+    proc serialize(writer: IO.fileWriter(?), ref serializer: writer.serializerType) throws {
+        writer.write(this.matrixDomain);
+        writer.write(this.underlyingMatrix);
+        writer.write(this.isVector);
+    }
+
+    proc init(type eltType, reader: IO.fileReader(?), ref deserializer: reader.deserializerType) throws {
+        this.eltType = eltType;
+        try! {
+            this.matrixDomain = reader.read(domain(2,int,false));
+            this.underlyingMatrix = reader.read([this.matrixDomain] eltType);
+            this.isVector = reader.read(bool);
+        }
+
+    }
 }
 
 proc matrixFromRows(arrays ...?n, type eltType) {
