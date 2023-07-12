@@ -93,15 +93,15 @@ class Network {
 
         var A = X;
         var As: list(lina.Matrix(real(64))) = new list(lina.Matrix(real(64)));
-        As.append(A);
+        As.pushBack(A);
         var Zs: list(lina.Matrix(real(64))) = new list(lina.Matrix(real(64)));
 
         for (B, W) in zip(biases, weights) {
             var Z = W.dot(A) + B;
-            Zs.append(Z);
+            Zs.pushBack(Z);
             var v = sigmoid(Z.matrix);
             A = new lina.Matrix(v);
-            As.append(A);
+            As.pushBack(A);
         }
 
         var delta = costDerivativeM(As.get(-1), Y) * sigmoidPrimeM(Zs.get(-1));
@@ -122,7 +122,7 @@ class Network {
             // nablaW.get(-l) = delta.dot(As.get((-l) - 1).transpose());
         }
     
-    return (nablaB.toArray(),nablaW.toArray());
+        return (nablaB.toArray(),nablaW.toArray());
 
     }
 
@@ -131,11 +131,20 @@ class Network {
         var nablaW = [w in weights] lina.zeros(w.shape[0],w.shape[1]);
         for (x,y) in batch {
             var (deltaNablaB, deltaNablaW) = backprop(x,y);
-            nablaB = [(nb,dnb) in zip(nablaB,deltaNablaB)] nb + dnb;
-            nablaW = [(nw,dnw) in zip(nablaW,deltaNablaW)] nw + dnw;
+            forall (nb,i) in zip(deltaNablaB,nablaB.domain) do nablaB[i] += nb;
+            forall (nw,i) in zip(deltaNablaW,nablaW.domain) do nablaW[i] += nw;
+            // nablaB += deltaNablaB;
+            // nablaW += deltaNablaW;
+            // nablaB = [(nb,dnb) in zip(nablaB,deltaNablaB)] nb + dnb;
+            // nablaW = [(nw,dnw) in zip(nablaW,deltaNablaW)] nw + dnw;
         }
-        weights = [(w,nw) in zip(weights,nablaW)] w - ((eta / batch.size) * nw);
-        biases = [(b,nb) in zip(biases,nablaB)] b - ((eta / batch.size) * nb);
+        forall (nb,i) in zip(nablaB,biases.domain) do biases[i] -= ((eta / batch.size) * nb);
+        forall (nw,i) in zip(nablaW,weights.domain) do weights[i] -= ((eta / batch.size) * nw);
+        
+        // weights -= ((eta / batch.size) * nablaW);
+        // biases -= ((eta / batch.size) * nablaB);
+        // weights = [(w,nw) in zip(weights,nablaW)] w - ((eta / batch.size) * nw);
+        // biases = [(b,nb) in zip(biases,nablaB)] b - ((eta / batch.size) * nb);
     }
 
     // proc adjust(x: lina.Matrix(real), y: lina.Matrix(real), learningRate: real) {
@@ -174,8 +183,8 @@ class Network {
     // }
 
     proc cost(output: [?d] real, expected: [d] real): real(64) {
-        var outputM = lina.vectorToMatrix(output);
-        var expectedM = lina.vectorToMatrix(expected);
+        const outputM = lina.vectorToMatrix(output);
+        const expectedM = lina.vectorToMatrix(expected);
         return costM(outputM, expectedM);
     }
 

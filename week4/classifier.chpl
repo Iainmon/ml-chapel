@@ -3,7 +3,7 @@ import MNIST;
 import Chai as chai;
 use List;
 use Random;
-
+use Math;
 use IO.FormattedIO;
 import Random;
 
@@ -71,7 +71,7 @@ for i in 1..epochs {
 // }
 
     shuffle(shuffledData);
-    var cached = [(x,y) in shuffledData] (lina.vectorToMatrix(x), lina.vectorToMatrix(y));
+    const cached = [(x,y) in shuffledData] (lina.vectorToMatrix(x), lina.vectorToMatrix(y));
 
     if i % 100 == 0 {
         for (X,Y) in cached {
@@ -99,25 +99,28 @@ for i in 1..epochs {
     var trainData = cached;
     // net.train(trainData, lr);
     var cost = 0.0;
-    for (X,Y) in cached {
-        // writeln("Input: ", x, " Expected: ", y, " Output: ", net.feedForward(x).transpose().matrix);
-        // var X = lina.vectorToMatrix(x);
-        // var Y = lina.vectorToMatrix(y);// .transpose().matrix;
-        // var Z = lina.vectorToMatrix(z);
-        // var localCost = net.costM(X,Y);
-        // writeln("LocalCost: ",localCost);
-        // cost += localCost;
-        var Z = net.feedForwardM(X);
-        cost += net.costM(Z,Y);
-        // net.adjust(x, y, lr, eta);
+    if i % 50 == 0 {
+        for (X,Y) in cached {
+            // writeln("Input: ", x, " Expected: ", y, " Output: ", net.feedForward(x).transpose().matrix);
+            // var X = lina.vectorToMatrix(x);
+            // var Y = lina.vectorToMatrix(y);// .transpose().matrix;
+            // var Z = lina.vectorToMatrix(z);
+            // var localCost = net.costM(X,Y);
+            // writeln("LocalCost: ",localCost);
+            // cost += localCost;
+            var Z = net.feedForwardM(X);
+            cost += net.costM(Z,Y);
+            // net.adjust(x, y, lr, eta);
+        }
     }
+    
 
     var globalCost = cost / (data.domain.size: real);
     ChapelIO.writef("Cost: %20.30r\n", globalCost);
 
     writeln("GobalCost: ",globalCost, " (", cost, ")", " LearningRate: ", lr, " Eta: ", eta);
 
-    if globalCost <= 0.005 {
+    if globalCost <= 0.005 && cost != 0.0 {
         writeln("I think that's enough...");
         break;
     }

@@ -14,11 +14,120 @@ import Random;
 import Math;
 
 
+record Vector {
+    type eltType;
+    var vectorDomain: domain(1,int);
+    var underlyingVector: [vectorDomain] eltType;
+
+    proc init(A: [?d] ?eltType) where d.rank == 1 {
+        this.eltType = eltType;
+        this.vectorDomain = d;
+        this.underlyingVector = A;
+    }
+    proc init(n: int, type eltType = real(64)) {
+        this.eltType = eltType;
+        this.vectorDomain = {0..#n};
+        this.underlyingVector = 0 : eltType;
+    }
+
+    proc this(n: int) ref { return underlyingVector[n]; }
+
+    iter these() ref {
+        for i in vectorDomain do
+            yield underlyingVector[i];
+    }
+
+    proc vector { return underlyingVector; }
+    proc shape { return vectorDomain.shape; }
+
+    proc toMatrix() do return new Matrix(this.underlyingVector);
+
+
+    operator +(lhs: Vector, rhs: Vector) {
+        const A = lhs.underlyingVector + rhs.underlyingVector;
+        return new Vector(A);
+    }
+    operator +(lhs: Vector, rhs: eltType) {
+        const A = lhs.underlyingVector + rhs;
+        return new Vector();
+    }
+    operator +(lhs: eltType, rhs: Vector) {
+        const A = lhs + rhs.underlyingVector;
+        return new Vector(A);
+    }
+    operator +=(ref lhs: Vector, const ref rhs: Vector) {
+        lhs.underlyingVector += rhs.underlyingVector;
+    }
+
+    operator -(lhs: Vector, rhs: Vector) {
+        const A = lhs.underlyingVector - rhs.underlyingVector;
+        return new Vector(A);
+    }
+    operator -(lhs: Vector, rhs: eltType) {
+        const A = lhs.underlyingVector - rhs;
+        return new Vector(A);
+    }
+    operator -(lhs: eltType, rhs: Vector) {
+        const A = lhs - rhs.underlyingVector;
+        return new Vector(A);
+    }
+    operator -=(ref lhs: Vector, const ref rhs: Vector) {
+        lhs.underlyingVector -= rhs.underlyingVector;
+    }
+
+    operator *(lhs: Vector, rhs: Vector) {
+        const A = lhs.underlyingVector * rhs.underlyingVector;
+        return new Vector(A);
+    }
+    operator *(lhs: Vector, rhs: eltType) {
+        const A = lhs.underlyingVector * rhs;
+        return new Vector(A);
+    }
+    operator *(lhs: eltType, rhs: Vector) {
+        const A = lhs * rhs.underlyingVector;
+        return new Vector(A);
+    }
+    operator *=(ref lhs: Vector, const ref rhs: Vector) {
+        lhs.underlyingVector *= rhs.underlyingVector;
+    }
+
+    proc writeThis(fw: IO.fileWriter) throws {
+        var cntr = 0;
+        for row in this.underlyingVector {
+            if cntr == 0 { fw.write("vector("); } else { fw.write("       "); }
+            if cntr < this.shape[0] - 1 { fw.writeln(row); } else { fw.write(row); }
+            cntr += 1;
+        }
+        fw.writeln(", shape=(",this.shape[0],",1))");
+    }
+}
+
+
+proc apply(const ref A: Matrix(?t), const ref V: Vector(t)): Vector(t) {
+    const (m,n) = A.shape;
+    const (p,) = V.shape;
+    if n != p then
+        halt("Trying to apply a matrix of shape ",A.shape," to a vector of shape ",V.shape);
+
+    const a = A.matrix;
+    const v = V.vector;
+    var w: [0..#m] t;
+    for i in 0..#m {
+        const row = a[i,..];
+        w[i] = + reduce (row * v);
+    }
+    return new Vector(w);
+}
+
+operator *(lhs: Matrix(?t), rhs: Vector(t)) {
+    return apply(lhs,rhs);
+}
+
 
 
 record Matrix {
     type eltType;
-    var matrixDomain: domain(2,int,false);
+    var matrixDomain: domain(2,int);
     var underlyingMatrix: [matrixDomain] eltType; 
     var isVector = false;
 
@@ -112,7 +221,7 @@ record Matrix {
         return new Matrix(LA.transpose(underlyingMatrix));
     
     operator +(lhs: Matrix, rhs: Matrix) {
-        var A = lhs.matrix + rhs.matrix;
+        const A = lhs.matrix + rhs.matrix;
         return new Matrix(A);
     }
 
@@ -127,16 +236,20 @@ record Matrix {
     }
 
     operator -(lhs: Matrix, rhs: Matrix) {
-        var A = lhs.matrix - rhs.matrix;
+        const A = lhs.matrix - rhs.matrix;
         return new Matrix(A);
+    }
+    operator -=(ref lhs: Matrix, const ref rhs: Matrix) {
+        lhs.underlyingMatrix -= rhs.underlyingMatrix;
+        return;
     }
 
     operator *(lhs: Matrix, rhs: Matrix) {
-        var A = lhs.matrix * rhs.matrix;
+        const A = lhs.matrix * rhs.matrix;
         return new Matrix(A);
     } 
     operator *(r: real(64), m: Matrix(real(64))) {
-        var A = r * m.matrix;
+        const A = r * m.matrix;
         // writeln((m.matrix * r).type:string);
         return new Matrix(A);
     }
@@ -152,8 +265,8 @@ record Matrix {
         return new Matrix(lhs * rhs.matrix);
 
     proc dot(rhs: Matrix) {
-        var (m1,n1) = this.shape;
-        var (m2,n2) = rhs.shape;
+        const (m1,n1) = this.shape;
+        const (m2,n2) = rhs.shape;
         if n1 != m2 {
             writeln("Cannot multiply: ", this, " and ", rhs);
             assert(n1 == m2, "Error computing dot product.");
@@ -162,7 +275,7 @@ record Matrix {
     }
 
     proc dot(rhs: [?d] eltType) {
-        var B = new Matrix(rhs);
+        const B = new Matrix(rhs);
         return new Matrix(LA.dot(this.matrix,B.matrix));
     }
 
@@ -195,13 +308,13 @@ record Matrix {
     }
 
     proc frobeniusNorm() {
-        var AA = this.underlyingMatrix ** 2.0;
-        var sum = + reduce AA;
+        const AA = this.underlyingMatrix ** 2.0;
+        const sum = + reduce AA;
         return sqrt(sum);
     }
     proc frobeniusNormPowTwo() {
-        var AA = this.underlyingMatrix ** 2.0;
-        var sum = + reduce AA;
+        const AA = this.underlyingMatrix ** 2.0;
+        const sum = + reduce AA;
         return sum;
     }
 
@@ -272,7 +385,7 @@ proc boxMuller(mu: real, sigma: real) {
     var rng = new owned Random.RandomStream(eltType=real(64));
     var u1 = rng.getNext();
     var u2 = rng.getNext();
-    var z0 = sqrt(-2.0 * log(u1)) * cos(2.0 * Math.pi * u2);
+    var z0 = sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.pi * u2);
     return mu + (sigma * z0);
 }
 
@@ -314,7 +427,9 @@ proc argmax(m: Matrix(real)) {
     return argmax;
 }
 
-
+proc eye(n: int) {
+    return new Matrix(LA.eye(n));
+}
 
 
 

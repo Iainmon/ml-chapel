@@ -26,6 +26,11 @@ graph: clean
 clibs: lib/lib.c lib/lib.h
 	c2chapel $(c_libs) $(output)/lib.chpl
 
+linatest: clean
+	chpl $(fast_flag) $(my_lib) $(blas_libs) $(output)/LinearTest lib/LinearTest.chpl
+	echo "Build complete."
+	./build/LinearTest
+
 clean: 
-	rm -rf build/classifier
-	rm -rf build/graph
+	rm -rf build
+	mkdir build
