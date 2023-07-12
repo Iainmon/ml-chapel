@@ -71,7 +71,7 @@ for i in 1..epochs {
 // }
 
     shuffle(shuffledData);
-    const cached = [(x,y) in shuffledData] (new lina.Vector(x), new lina.Vector(y));
+    const cached = [(x,y) in shuffledData] (lina.vectorToMatrix(x), lina.vectorToMatrix(y));
 
     if i % 100 == 0 {
         for (X,Y) in cached {
@@ -99,7 +99,7 @@ for i in 1..epochs {
     var trainData = cached;
     // net.train(trainData, lr);
     var cost = 0.0;
-    if i % 1 == 0 {
+    if i % 50 == 0 {
         for (X,Y) in cached {
             // writeln("Input: ", x, " Expected: ", y, " Output: ", net.feedForward(x).transpose().matrix);
             // var X = lina.vectorToMatrix(x);

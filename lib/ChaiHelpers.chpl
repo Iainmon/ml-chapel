@@ -21,20 +21,24 @@ proc sigmoid(x: real(64)): real(64) {
     // return (Math.exp(x) / (Math.exp(x) + 1.0)) + 0.001;
 }
 proc sigmoidM(m: lina.Matrix(real(64))): lina.Matrix(real(64)) {
-    var A = sigmoid(m.matrix);
+    const A = sigmoid(m.matrix);
     return new lina.Matrix(A);
 }
 
 proc sigmoidPrime(x: real(64)): real(64) {
-    var sig = sigmoid(x);
+    const sig = sigmoid(x);
     return sig * (1.001 - sig);
 }
 
 proc sigmoidPrimeM(m: lina.Matrix(real(64))): lina.Matrix(real(64)) {
-    var A = sigmoidPrime(m.matrix);
+    const A = sigmoidPrime(m.matrix);
     return new lina.Matrix(A);
 }
 
+proc sigmoidPrimeM(m: lina.Vector(real(64))): lina.Vector(real(64)) {
+    const A = sigmoidPrime(m.underlyingVector);
+    return new lina.Vector(A);
+}
 
 
 for i in 0..80000 {

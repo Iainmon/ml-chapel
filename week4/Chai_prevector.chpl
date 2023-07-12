@@ -15,6 +15,7 @@ import Json;
 
 
 
+
 iter makeMatrices(layerSizes: [?d] int) {
     for i in d[1..] {
         var m = layerSizes[i-1];
@@ -39,7 +40,7 @@ class Network {
     var biasesDomain = {0..2};
     var weightsDomain = {0..1};
 
-    var biases: [biasesDomain] lina.Vector(real(64));
+    var biases: [biasesDomain] lina.Matrix(real(64));
     var weights: [weightsDomain] lina.Matrix(real(64));
 
     // constructor
@@ -48,39 +49,42 @@ class Network {
         this.layerSizes = layerSizes;
         this.numLayers = layerSizes.size;
 
+        // How to initialize biases and weights?
+
         biasesDomain = layerSizes.domain[0..#(numLayers - 1)]; //.translate(-1);
         weightsDomain = {0..#(numLayers - 1)};
 
-        biases = [y in biasesDomain] lina.randn(layerSizes[y + 1],1).vectorize();
+        biases = [y in biasesDomain] lina.randn(layerSizes[y + 1],1);
+        // weights = [i in weightsDomain] (1.0 / (layerSizes[i + 1] * layerSizes[i])) * lina.random(layerSizes[i + 1], layerSizes[i]); // makeMatrices(layerSizes);
 
         weights = [i in weightsDomain] lina.randn(layerSizes[i + 1], layerSizes[i]); // makeMatrices(layerSizes);
 
+        // writeln("Biases: ", biases);
+        // writeln("Weights: ", weights);
     }
 
     proc feedForward(a: [?d] real(64)) {
-        return feedForwardM(new lina.Vector(a));
-        // return feedForwardM(lina.vectorToMatrix(a));
+        return feedForwardM(lina.vectorToMatrix(a));
     }
 
-    proc feedForwardM(in A: lina.Vector(real)): lina.Vector(real) {
-        // var A: lina.Vector(real(64)) = A_;
+    proc feedForwardM(A_: lina.Matrix(real(64))): lina.Matrix(real(64)) {
+        var A: lina.Matrix(real(64)) = A_;
         for (B, W) in zip(biases,weights) {
-            const X = (W * A) + B;
-            const v = sigmoid(X.underlyingVector); // sigmoid(Z.vector);
-            // A = v; // Try this!!
-            A = new lina.Vector(v);
+            var X = W.dot(A) + B;
+            var v = sigmoid(X.matrix);
+            A = new lina.Matrix(v); // Very slow
         }
         return A;
     }
 
 
-    proc backprop(X: lina.Vector(real(64)), Y: lina.Vector(real(64))) {
+    proc backprop(X: lina.Matrix(real(64)), Y: lina.Matrix(real(64))) {
 
         // var X = lina.vectorToMatrix(x);
         // var Y = lina.vectorToMatrix(y);
 
 
-        var nablaB_ = [b in biases] lina.zeros(b.shape[0],1).vectorize();
+        var nablaB_ = [b in biases] lina.zeros(b.shape[0],b.shape[1]);
         var nablaW_ = [w in weights] lina.zeros(w.shape[0],w.shape[1]);
         
         var nablaB = new list(nablaB_);
@@ -88,21 +92,21 @@ class Network {
 
 
         var A = X;
-        var As: list(lina.Vector(real(64))) = new list(lina.Vector(real(64)));
+        var As: list(lina.Matrix(real(64))) = new list(lina.Matrix(real(64)));
         As.pushBack(A);
-        var Zs: list(lina.Vector(real(64))) = new list(lina.Vector(real(64)));
+        var Zs: list(lina.Matrix(real(64))) = new list(lina.Matrix(real(64)));
 
         for (B, W) in zip(biases, weights) {
-            const Z = (W * A) + B;
+            var Z = W.dot(A) + B;
             Zs.pushBack(Z);
-            const v = sigmoid(Z.underlyingVector);
-            A = new lina.Vector(v);
+            var v = sigmoid(Z.matrix);
+            A = new lina.Matrix(v);
             As.pushBack(A);
         }
 
-        var delta: lina.Vector(real) = costDerivativeM(As.get(-1), Y) * sigmoidPrimeM(Zs.get(-1));
-        nablaB[nablaB.getIdx(-1)] = delta;// .copy();
-        nablaW[nablaW.getIdx(-1)] = delta * As.get(-2).transpose();
+        var delta = costDerivativeM(As.get(-1), Y) * sigmoidPrimeM(Zs.get(-1));
+        nablaB[nablaB.getIdx(-1)] = delta.copy();
+        nablaW[nablaW.getIdx(-1)] = delta.dot(As.get(-2).transpose());
 
         // nablaB.get(-1) = delta;
         // nablaW.get(-1) = delta.dot(As.get(-2).transpose());
@@ -111,9 +115,9 @@ class Network {
             var Z = Zs.get(-l);
             var SP = sigmoidPrimeM(Z);
             var W = weights[getIdx(weights,(-l) + 1)];
-            delta = (W.transpose() * delta) * SP;
-            nablaB[nablaB.getIdx(-l)] = delta;// .copy();
-            nablaW[nablaW.getIdx(-l)] = delta * As.get((-l) - 1).transpose();
+            delta = W.transpose().dot(delta) * SP;
+            nablaB[nablaB.getIdx(-l)] = delta.copy();
+            nablaW[nablaW.getIdx(-l)] = delta.dot(As.get((-l) - 1).transpose());
             // nablaB.get(-l) = delta;
             // nablaW.get(-l) = delta.dot(As.get((-l) - 1).transpose());
         }
@@ -122,8 +126,8 @@ class Network {
 
     }
 
-    proc updateBatch(batch: [?d] (lina.Vector(real(64)),lina.Vector(real(64))), eta: real(64)) {
-        var nablaB = [b in biases] lina.zeros(b.shape[0],1).vectorize();
+    proc updateBatch(batch: [?d] (lina.Matrix(real(64)),lina.Matrix(real(64))), eta: real(64)) {
+        var nablaB = [b in biases] lina.zeros(b.shape[0],b.shape[1]);
         var nablaW = [w in weights] lina.zeros(w.shape[0],w.shape[1]);
         for (x,y) in batch {
             var (deltaNablaB, deltaNablaW) = backprop(x,y);
@@ -184,7 +188,7 @@ class Network {
         return costM(outputM, expectedM);
     }
 
-    proc costM(output: lina.Vector(real(64)), expected: lina.Vector(real(64))): real(64) {
+    proc costM(output: lina.Matrix(real(64)), expected: lina.Matrix(real(64))): real(64) {
         return 0.5 * (output - expected).frobeniusNormPowTwo(); // 0.5 * ((output - expected).frobeniusNorm() ** 2.0);
     }
 
@@ -192,7 +196,7 @@ class Network {
         return output - expected_output;
     }
 
-    proc costDerivativeM(output: lina.Vector(real), expected: lina.Vector(real)) {
+    proc costDerivativeM(output: lina.Matrix(real), expected: lina.Matrix(real)) {
         return output - expected;
     }
 /*

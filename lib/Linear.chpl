@@ -29,6 +29,21 @@ record Vector {
         this.vectorDomain = {0..#n};
         this.underlyingVector = 0 : eltType;
     }
+    proc init(A: Matrix(?t)) {
+        const (m,n) = A.shape;
+        if m != 1 && n != 1 then
+            halt("Trying to initialize a vector with a matrix of shape ",A.shape);
+        
+        this.eltType = t;
+        this.vectorDomain = {0..#max(m,n)};
+        this.underlyingVector = A;
+
+    }
+    proc init(type eltType) {
+        this.eltType = eltType;
+        this.vectorDomain = {0..#0};
+        this.underlyingVector = 0 : eltType;
+    }
 
     proc this(n: int) ref { return underlyingVector[n]; }
 
@@ -41,7 +56,21 @@ record Vector {
     proc shape { return vectorDomain.shape; }
 
     proc toMatrix() do return new Matrix(this.underlyingVector);
+    
+    proc transpose() {
+        var a: [0..#1, 0..#this.shape[0]] eltType;
+        a[0,..] = this.underlyingVector;
+        // forall i in 0..#this.shape[0] {
+        //     a[0,i] = this.underlyingVector[i];
+        // }
+        return new Matrix(a);
 
+    }
+
+    operator =(ref lhs: Vector, rhs: [?d] eltType) where d.rank == 1 {
+        lhs.vectorDomain = d;
+        lhs.underlyingVector = rhs;
+    }
 
     operator +(lhs: Vector, rhs: Vector) {
         const A = lhs.underlyingVector + rhs.underlyingVector;
@@ -83,7 +112,7 @@ record Vector {
         const A = lhs.underlyingVector * rhs;
         return new Vector(A);
     }
-    operator *(lhs: eltType, rhs: Vector) {
+    operator *(lhs: ?t, rhs: Vector(t)) {
         const A = lhs * rhs.underlyingVector;
         return new Vector(A);
     }
@@ -100,6 +129,11 @@ record Vector {
         }
         fw.writeln(", shape=(",this.shape[0],",1))");
     }
+
+    proc frobeniusNormPowTwo() {
+        const AA = this.underlyingVector ** 2.0;
+        return + reduce AA;
+    }
 }
 
 
@@ -112,7 +146,7 @@ proc apply(const ref A: Matrix(?t), const ref V: Vector(t)): Vector(t) {
     const a = A.matrix;
     const v = V.vector;
     var w: [0..#m] t;
-    for i in 0..#m {
+    forall i in 0..#m {
         const row = a[i,..];
         w[i] = + reduce (row * v);
     }
@@ -120,6 +154,26 @@ proc apply(const ref A: Matrix(?t), const ref V: Vector(t)): Vector(t) {
 }
 
 operator *(lhs: Matrix(?t), rhs: Vector(t)) {
+    return apply(lhs,rhs);
+}
+
+proc apply(const ref V: Vector(?t), const ref A: Matrix(t)): Matrix(t) {
+    const (p,) = V.shape;
+    const (m,n) = A.shape;
+    if m != 1 then
+        halt("Trying to apply a vector of shape ",V.shape," to a matrix of shape ",A.shape);
+
+    const a = A.matrix;
+    const v = V.vector;
+    var b: [0..#p, 0..#n] t;
+    forall (i,j) in b.domain {
+        b[i,j] = v[i] * a[0,j];
+    }
+    return new Matrix(b);
+
+}
+
+operator *(lhs: Vector(?t), rhs: Matrix(t)) {
     return apply(lhs,rhs);
 }
 
@@ -179,6 +233,9 @@ record Matrix {
         matrixDomain = {0..1, 0..1};
         underlyingMatrix = LA.Matrix(2,2,eltType);
     }
+    proc init(V: Vector) {
+        this.init(V.underlyingVector);
+    }
 
     // create initializer that accepts an iterator
     // proc init(expr) {
@@ -188,6 +245,8 @@ record Matrix {
 
 
     proc matrix { return underlyingMatrix; }
+
+    proc vectorize() { return new Vector(this); }
     
     proc shape { return matrixDomain.shape; }
 
@@ -199,6 +258,11 @@ record Matrix {
     iter columns {
         for i in 0..<this.shape[1] do
             yield underlyingMatrix[..,i];
+    }
+
+    iter these() ref {
+        for i in this.matrixDomain do
+            yield this.underlyingMatrix[i];
     }
 
     // proc rows
@@ -343,7 +407,7 @@ proc matrixFromRows(arrays ...?n, type eltType) {
             A[i,j] = arrays[i][j];
         } else {
             A[i,j] = arrays[i][j] : eltType;
-            writeln("ran conversion!");
+            // writeln("ran conversion!");
         }
     }
     return new Matrix(A);
