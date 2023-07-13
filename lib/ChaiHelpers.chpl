@@ -35,8 +35,11 @@ proc sigmoidPrimeM(m: lina.Matrix(real(64))): lina.Matrix(real(64)) {
     return new lina.Matrix(A);
 }
 
-proc sigmoidPrimeM(m: lina.Vector(real(64))): lina.Vector(real(64)) {
-    const A = sigmoidPrime(m.underlyingVector);
+proc sigmoidPrimeM(in V: lina.Vector(real(64))): lina.Vector(real(64)) {
+    const A = sigmoidPrime(V.underlyingVector);
+    // V.vectorDomain = A.domain;
+    // V.underlyingVector = A;
+    // return V;
     return new lina.Vector(A);
 }
 
@@ -50,4 +53,13 @@ for i in 0..80000 {
         writef("%.15r, %.15r", i, y);
         break;
     }
+}
+
+
+proc err(args...?n) {
+    var s = "";
+    for param i in 0..<n {
+        s += args(i): string;
+    }
+    try! throw new Error(s);
 }

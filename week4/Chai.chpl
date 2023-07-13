@@ -68,7 +68,9 @@ class Network {
             const X = (W * A) + B;
             const v = sigmoid(X.underlyingVector); // sigmoid(Z.vector);
             // A = v; // Try this!!
-            A = new lina.Vector(v);
+            A.vectorDomain = v.domain;
+            A.underlyingVector = v;
+            // A = new lina.Vector(v);
         }
         return A;
     }
@@ -78,47 +80,63 @@ class Network {
 
         // var X = lina.vectorToMatrix(x);
         // var Y = lina.vectorToMatrix(y);
+        // writeln("X: ", X.shape);
+        // writeln("Y: ", Y.shape);
 
 
-        var nablaB_ = [b in biases] lina.zeros(b.shape[0],1).vectorize();
-        var nablaW_ = [w in weights] lina.zeros(w.shape[0],w.shape[1]);
+        var nablaB = [b in biases] lina.zeros(b.shape[0],1).vectorize();
+        var nablaW = [w in weights] lina.zeros(w.shape[0],w.shape[1]);
         
-        var nablaB = new list(nablaB_);
-        var nablaW = new list(nablaW_);
+        // var nablaB = new list(nablaB_);
+        // var nablaW = new list(nablaW_);
+
+        const nbSize = nablaB.size;
+        const nwSize = nablaW.size;
 
 
         var A = X;
-        var As: list(lina.Vector(real(64))) = new list(lina.Vector(real(64)));
-        As.pushBack(A);
-        var Zs: list(lina.Vector(real(64))) = new list(lina.Vector(real(64)));
+        var As: [0..#(biases.size + 1)] lina.Vector(real(64));
+        As[0] = A;
+        // var As: list(lina.Vector(real(64))) = new list(lina.Vector(real(64)));
+        // As.pushBack(A);
+        var Zs: [0..#biases.size] lina.Vector(real(64));
+        // var Zs: list(lina.Vector(real(64))) = new list(lina.Vector(real(64)));
 
-        for (B, W) in zip(biases, weights) {
+        for (B, W,i) in zip(biases, weights,0..) {
             const Z = (W * A) + B;
-            Zs.pushBack(Z);
+            Zs[i] = Z;
+            // Zs.pushBack(Z);
             const v = sigmoid(Z.underlyingVector);
-            A = new lina.Vector(v);
-            As.pushBack(A);
+            A.vectorDomain = v.domain;
+            A.underlyingVector = v;
+            // A = new lina.Vector(v);
+            // As.pushBack(A);
+            As[i + 1] = A;
         }
 
-        var delta: lina.Vector(real) = costDerivativeM(As.get(-1), Y) * sigmoidPrimeM(Zs.get(-1));
-        nablaB[nablaB.getIdx(-1)] = delta;// .copy();
-        nablaW[nablaW.getIdx(-1)] = delta * As.get(-2).transpose();
+        const AsSize = As.size;
+        const ZsSize = Zs.size;
+
+        var delta = costDerivativeM(As[AsSize - 1], Y) * sigmoidPrimeM(Zs[ZsSize - 1]);
+
+        nablaB[nbSize - 1] = delta;// .copy();
+        nablaW[nwSize - 1] = delta * As[AsSize - 2].transpose();
 
         // nablaB.get(-1) = delta;
         // nablaW.get(-1) = delta.dot(As.get(-2).transpose());
         
         for l in 2..<numLayers {
-            var Z = Zs.get(-l);
+            var Z = Zs[ZsSize - l];
             var SP = sigmoidPrimeM(Z);
             var W = weights[getIdx(weights,(-l) + 1)];
             delta = (W.transpose() * delta) * SP;
-            nablaB[nablaB.getIdx(-l)] = delta;// .copy();
-            nablaW[nablaW.getIdx(-l)] = delta * As.get((-l) - 1).transpose();
+            nablaB[nbSize - l] = delta;// .copy();
+            nablaW[nwSize - l] = delta * (As[AsSize - (l + 1)].transpose());
             // nablaB.get(-l) = delta;
             // nablaW.get(-l) = delta.dot(As.get((-l) - 1).transpose());
         }
     
-        return (nablaB.toArray(),nablaW.toArray());
+        return (nablaB,nablaW); // (nablaB.toArray(),nablaW.toArray());
 
     }
 

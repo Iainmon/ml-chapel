@@ -141,8 +141,8 @@ proc apply(const ref A: Matrix(?t), const ref V: Vector(t)): Vector(t) {
     const (m,n) = A.shape;
     const (p,) = V.shape;
     if n != p then
-        halt("Trying to apply a matrix of shape ",A.shape," to a vector of shape ",V.shape);
-
+        err("Trying to apply a matrix of shape ", A.shape," to a vector of shape ", V.shape);
+        
     const a = A.matrix;
     const v = V.vector;
     var w: [0..#m] t;
@@ -161,7 +161,7 @@ proc apply(const ref V: Vector(?t), const ref A: Matrix(t)): Matrix(t) {
     const (p,) = V.shape;
     const (m,n) = A.shape;
     if m != 1 then
-        halt("Trying to apply a vector of shape ",V.shape," to a matrix of shape ",A.shape);
+        err("Trying to apply a vector of shape ",V.shape, " to a matrix of shape ", A.shape);
 
     const a = A.matrix;
     const v = V.vector;
