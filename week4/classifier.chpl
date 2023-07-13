@@ -10,7 +10,7 @@ import Random;
 
 writeln("Loading data...");
 
-config const numImages = 50;
+config const numImages = 100;
 
 var images = MNIST.loadImages(numImages);
 var (labels,labelVectors) = MNIST.loadLabels(numImages);

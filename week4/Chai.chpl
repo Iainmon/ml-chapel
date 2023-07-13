@@ -84,7 +84,7 @@ class Network {
         // writeln("Y: ", Y.shape);
 
 
-        var nablaB = [b in biases] lina.zeros(b.shape[0],1).vectorize();
+        var nablaB = [b in biases] new lina.Vector(b.shape[0]); // lina.zeros(b.shape[0],1).vectorize();
         var nablaW = [w in weights] lina.zeros(w.shape[0],w.shape[1]);
         
         // var nablaB = new list(nablaB_);
@@ -126,9 +126,9 @@ class Network {
         // nablaW.get(-1) = delta.dot(As.get(-2).transpose());
         
         for l in 2..<numLayers {
-            var Z = Zs[ZsSize - l];
-            var SP = sigmoidPrimeM(Z);
-            var W = weights[getIdx(weights,(-l) + 1)];
+            const Z = Zs[ZsSize - l];
+            const SP = sigmoidPrimeM(Z);
+            const W = weights[getIdx(weights,(-l) + 1)];
             delta = (W.transpose() * delta) * SP;
             nablaB[nbSize - l] = delta;// .copy();
             nablaW[nwSize - l] = delta * (As[AsSize - (l + 1)].transpose());
@@ -143,8 +143,8 @@ class Network {
     proc updateBatch(batch: [?d] (lina.Vector(real(64)),lina.Vector(real(64))), eta: real(64)) {
         var nablaB = [b in biases] lina.zeros(b.shape[0],1).vectorize();
         var nablaW = [w in weights] lina.zeros(w.shape[0],w.shape[1]);
-        for (x,y) in batch {
-            var (deltaNablaB, deltaNablaW) = backprop(x,y);
+        forall (x,y) in batch {
+            const (deltaNablaB, deltaNablaW) = backprop(x,y);
             forall (nb,i) in zip(deltaNablaB,nablaB.domain) do nablaB[i] += nb;
             forall (nw,i) in zip(deltaNablaW,nablaW.domain) do nablaW[i] += nw;
             // nablaB += deltaNablaB;

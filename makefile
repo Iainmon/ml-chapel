@@ -1,12 +1,20 @@
 
 
 
-
 my_lib = -M lib
-blas_libs = -I/opt/homebrew/opt/openblas/include -L/opt/homebrew/opt/openblas/lib -lblas
+
+UNAME := $(shell uname)
+ifeq ($(UNAME), Linux)
+	blas_libs = -I/chapel/home/moncrief/blas/include -L/chapel/home/moncrief/blas/lib -lopenblas
+endif
+ifeq ($(UNAME), Darwin)
+	blas_libs = -I/opt/homebrew/opt/openblas/include -L/opt/homebrew/opt/openblas/lib -lblas
+endif
+
 c_libs = lib/lib.c lib/lib.h
 serializer_flags = --no-io-serialize-writeThis
 output = --output=build
+
 ifeq ($(fast),true)
 	fast_flag = --fast
 else
