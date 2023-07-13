@@ -54,7 +54,7 @@ writeln("Training network...");
 // writeln(lina.randn(10,1));
 // halt(0);
 
-const learningRate = 0.8; // 0.05
+config const learningRate = 0.8; // 0.05
 const decay = 0.9; // 0.1
 const initialVariance = 0.1; // 0.1
 const epochs = 8000;
