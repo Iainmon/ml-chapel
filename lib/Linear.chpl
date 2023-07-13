@@ -444,9 +444,11 @@ proc zeroVector(n: int, type eltType=real(64)) {
     return new Matrix(A);
 }
 
+var rng = new Random.RandomStream(eltType=real(64));
+
 proc random(m: int, n: int, type eltType=real(64)) {
     var A = LA.Matrix(m,n,eltType);
-    var rng = new owned Random.RandomStream(eltType=eltType);
+    // var rng = new owned Random.RandomStream(eltType=eltType);
     rng.fillRandom(A);
     A = 2.0 * (A - 0.5);
     return new Matrix(A);
@@ -454,7 +456,6 @@ proc random(m: int, n: int, type eltType=real(64)) {
 
 
 proc boxMuller(mu: real, sigma: real) {
-    var rng = new owned Random.RandomStream(eltType=real(64));
     var u1 = rng.getNext();
     var u2 = rng.getNext();
     var z0 = sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.pi * u2);
@@ -481,7 +482,7 @@ proc randn(m: int, n: int, type eltType=real(64)) {
 
 proc randomVector(n: int, type eltType=real(64)) {
     var A = LA.Vector(n,eltType);
-    var rng = new owned Random.RandomStream(eltType=eltType);
+    // var rng = new owned Random.RandomStream(eltType=eltType);
     rng.fillRandom(A);
     return new Matrix(A);
 }

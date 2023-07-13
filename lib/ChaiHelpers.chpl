@@ -44,22 +44,23 @@ proc sigmoidPrimeM(in V: lina.Vector(real(64))): lina.Vector(real(64)) {
 }
 
 
-for i in 0..80000 {
-    var ir = (i: real(64)) / 1000.0;
-    var y = sigmoid(ir);
-    writeln("(", i, ",", y ,")");
-    if abs(y - 1) < 0.000000000000000000001 {
-        writeln("Stopped at ", i);
-        writef("%.15r, %.15r", i, y);
-        break;
-    }
-}
-
-
 proc err(args...?n) {
     var s = "";
     for param i in 0..<n {
         s += args(i): string;
     }
     try! throw new Error(s);
+}
+
+proc main() {
+    for i in 0..80000 {
+        var ir = (i: real(64)) / 1000.0;
+        var y = sigmoid(ir);
+        writeln("(", i, ",", y ,")");
+        if abs(y - 1) < 0.000000000000000000001 {
+            writeln("Stopped at ", i);
+            writef("%.15r, %.15r", i, y);
+            break;
+        }
+    }
 }
