@@ -11,6 +11,8 @@ import Random;
 writeln("Loading data...");
 
 config const numImages = 100;
+config const testSize = 10;
+config const testInterval = 10;
 
 var images = MNIST.loadImages(numImages);
 var (labels,labelVectors) = MNIST.loadLabels(numImages);
@@ -59,7 +61,10 @@ const decay = 0.9; // 0.1
 const initialVariance = 0.1; // 0.1
 const epochs = 8000;
 
-const trainingData = [(x,y) in data] (new lina.Vector(x), new lina.Vector(y));
+
+const trainingData = [(x,y) in data[testSize..]] (new lina.Vector(x), new lina.Vector(y));
+const testData = [(x,y) in data[0..#testSize]] (new lina.Vector(x), new lina.Vector(y));
+
 // var cached = [(x,y) in shuffledData] (lina.vectorToMatrix(x), lina.vectorToMatrix(y));
 var costDiff = 1.0;
 var lastCost = 1.0;
@@ -73,8 +78,8 @@ for i in 1..epochs {
     // shuffle(shuffledData);
     // const cached = [(x,y) in shuffledData] (new lina.Vector(x), new lina.Vector(y));
 
-    if i % 100 == 0 {
-        for (X,Y) in trainingData {
+    if i % testInterval == 0 {
+        for (X,Y) in testData {
             var Z = net.feedForwardM(X);
             writeln("Input: [image] Expected: ", Y.transpose().matrix, " Output: ", Z.transpose().matrix, " (",lina.argmax(Y.transpose())," , ", lina.argmax(Z.transpose()), ")");
         }

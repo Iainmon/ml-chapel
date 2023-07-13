@@ -76,7 +76,7 @@ class Network {
     }
 
 
-    proc backprop(X: lina.Vector(real(64)), Y: lina.Vector(real(64))) {
+    proc backprop(const ref X: lina.Vector(real(64)), const ref Y: lina.Vector(real(64))) {
 
         // var X = lina.vectorToMatrix(x);
         // var Y = lina.vectorToMatrix(y);
@@ -140,7 +140,7 @@ class Network {
 
     }
 
-    proc updateBatch(batch: [?d] (lina.Vector(real(64)),lina.Vector(real(64))), eta: real(64)) {
+    proc updateBatch(const ref batch: [?d] (lina.Vector(real(64)),lina.Vector(real(64))), eta: real(64)) {
         var nablaB = [b in biases] lina.zeros(b.shape[0],1).vectorize();
         var nablaW = [w in weights] lina.zeros(w.shape[0],w.shape[1]);
         forall (x,y) in batch {
