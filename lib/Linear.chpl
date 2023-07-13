@@ -142,7 +142,7 @@ proc apply(const ref A: Matrix(?t), const ref V: Vector(t)): Vector(t) {
     const (p,) = V.shape;
     if n != p then
         err("Trying to apply a matrix of shape ", A.shape," to a vector of shape ", V.shape);
-        
+
     const a = A.matrix;
     const v = V.vector;
     var w: [0..#m] t;
@@ -207,7 +207,7 @@ record Matrix {
     }
     proc init(A: [?d] ?t, type eltType) {
         var B: [d] eltType;
-        for i in d {
+        forall i in d {
             if t == real(64) {
                 B[i] = A[i];
             } else {
@@ -281,8 +281,15 @@ record Matrix {
         fw.writeln(", shape=",this.shape,")");
     }
 
-    proc transpose() do
-        return new Matrix(LA.transpose(underlyingMatrix));
+    proc transpose() {
+        const (m,n) = this.shape;
+        var A: [0..#n, 0..#m] eltType;
+        forall (i,j) in A.domain {
+            A[i,j] = this.underlyingMatrix[j,i];
+        }
+        return new Matrix(A);
+        // return new Matrix(LA.transpose(underlyingMatrix));
+    }
     
     operator +(lhs: Matrix, rhs: Matrix) {
         const A = lhs.matrix + rhs.matrix;
@@ -349,20 +356,20 @@ record Matrix {
         var (m,n) = this.shape;
         if m == 1 {
             var vec: [0..#n] eltType;
-            for i in 0..<n {
+            forall i in 0..<n {
                 vec[i] = this.underlyingMatrix[0,i];
             }
             return vec;
         } else if n == 1 {
             var vec: [0..#m] eltType;
-            for i in 0..<m {
+            forall i in 0..<m {
                 vec[i] = this.underlyingMatrix[i,0];
             }
             return vec;
         } else if this.isVector {
             var (m,n) = this.shape;
             var vec: [0..#m] eltType;
-            for i in 0..<m {
+            forall i in 0..<m {
                 vec[i] = this.underlyingMatrix[i,0];
             }
             return vec;
@@ -427,7 +434,8 @@ proc vectorToMatrix(vector: [?d] ?t, type eltType=real(64)) where d.rank == 1 {
 
 
 proc zeros(m: int, n: int, type eltType=real(64)) {
-    var A = LA.Matrix(m,n,eltType);
+    // var A = LA.Matrix(m,n,eltType);
+    const A: [0..#m,0..#n] eltType;
     return new Matrix(A);
 }
 
@@ -464,7 +472,7 @@ proc normal() {
 
 proc randn(m: int, n: int, type eltType=real(64)) {
     var A = LA.Matrix(m,n,eltType);
-    for (i,j) in A.domain {
+    forall (i,j) in A.domain {
         A[i,j] = normal();
     }
     return new Matrix(A);
