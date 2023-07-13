@@ -59,7 +59,7 @@ const decay = 0.9; // 0.1
 const initialVariance = 0.1; // 0.1
 const epochs = 8000;
 
-var shuffledData = data;
+const trainingData = [(x,y) in data] (new lina.Vector(x), new lina.Vector(y));
 // var cached = [(x,y) in shuffledData] (lina.vectorToMatrix(x), lina.vectorToMatrix(y));
 var costDiff = 1.0;
 var lastCost = 1.0;
@@ -70,11 +70,11 @@ for i in 1..epochs {
 //     writeln("Input: [image] Expected: ", y, " Output: ", net.feedForward(x).transpose().matrix);
 // }
 
-    shuffle(shuffledData);
-    const cached = [(x,y) in shuffledData] (new lina.Vector(x), new lina.Vector(y));
+    // shuffle(shuffledData);
+    // const cached = [(x,y) in shuffledData] (new lina.Vector(x), new lina.Vector(y));
 
     if i % 100 == 0 {
-        for (X,Y) in cached {
+        for (X,Y) in trainingData {
             var Z = net.feedForwardM(X);
             writeln("Input: [image] Expected: ", Y.transpose().matrix, " Output: ", Z.transpose().matrix, " (",lina.argmax(Y.transpose())," , ", lina.argmax(Z.transpose()), ")");
         }
@@ -82,7 +82,7 @@ for i in 1..epochs {
 
 
 
-    net.updateBatch(cached,learningRate);
+    net.updateBatch(trainingData,learningRate);
 
 
 
@@ -96,11 +96,10 @@ for i in 1..epochs {
     //     lr = 0.3;
     // } // abs(lina.random(1,1).matrix[0,0]);//* ;
 
-    var trainData = cached;
     // net.train(trainData, lr);
     var cost = 0.0;
     if i % 1 == 0 {
-        for (X,Y) in cached {
+        for (X,Y) in trainingData {
             // writeln("Input: ", x, " Expected: ", y, " Output: ", net.feedForward(x).transpose().matrix);
             // var X = lina.vectorToMatrix(x);
             // var Y = lina.vectorToMatrix(y);// .transpose().matrix;
