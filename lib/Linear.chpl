@@ -178,6 +178,24 @@ operator *(lhs: Vector(?t), rhs: Matrix(t)) {
 }
 
 
+proc apply(const ref A: Matrix(?t), const ref B: Matrix(t)): Matrix(t) {
+    const (m,n) = A.shape;
+    const (p,q) = B.shape;
+    if n != p then
+        err("Trying to apply a matrix of shape ", A.shape," to a matrix of shape ", B.shape);
+
+    const a = A.matrix;
+    const b = B.matrix;
+    var c: [0..#m, 0..#q] t;
+    forall (i,j) in c.domain {
+        const row = a[i,..];
+        const col = b[..,j];
+        c[i,j] = + reduce (row * col);
+    }
+    return new Matrix(c);
+}
+
+
 
 record Matrix {
     type eltType;
