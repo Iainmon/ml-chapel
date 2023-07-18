@@ -11,7 +11,7 @@ import Random;
 writeln("Loading data...");
 
 config const numImages = 8000;
-config const testSize = 100;
+config const testSize = (numImages / 10):int;
 config const testInterval = 100;
 config const epochs = 8000;
 

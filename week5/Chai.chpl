@@ -107,10 +107,6 @@ class Network {
 
         var delta = costDerivative(As[AsSize - 1], Y) * sigmoidPrime(Zs[ZsSize - 1]);
 
-        // const nablaB = delta;
-        // const nablaW = delta * As[AsSize - 2].transpose();
-        // yield (nablaB,nablaW);
-
         for l in 1..<numLayers {
             const Z = Zs[ZsSize - l];
             const A = As[AsSize - (l + 1)];
@@ -129,31 +125,13 @@ class Network {
     }
 
     proc updateBatchNew(const ref batch: [?d] (lina.Vector(real(64)),lina.Vector(real(64))), eta: real(64)) {
-        // var nablaB = [b in biases] lina.zeros(b.shape[0],1).vectorize();
-        // var nablaW = [w in weights] lina.zeros(w.shape[0],w.shape[1]);
-
         const scale = eta / batch.size;
-
         forall (x,y) in batch {
-
-            foreach ((nablaB,nablaW),i) in zip(backpropIter(x,y),0..) {
+            for ((nablaB,nablaW),i) in zip(backpropIter(x,y),0..) {
                 biases[biases.size - i - 1] -= scale * nablaB;
                 weights[weights.size - i - 1] -= scale * nablaW;
             }
-
-
-
-
-            // const (deltaNablaB, deltaNablaW) = backprop(x,y);
-            // forall (nb,i) in zip(deltaNablaB,nablaB.domain) do nablaB[i] += nb;
-            // forall (nw,i) in zip(deltaNablaW,nablaW.domain) do nablaW[i] += nw;
-            // nablaB += deltaNablaB; // Prefered implementation
-            // nablaW += deltaNablaW;
         }
-        // forall (nb,i) in zip(nablaB,biases.domain) do biases[i] -= ((eta / batch.size) * nb);
-        // forall (nw,i) in zip(nablaW,weights.domain) do weights[i] -= ((eta / batch.size) * nw);
-        // weights -= ((eta / batch.size) * nablaW); // Prefered implementation
-        // biases -= ((eta / batch.size) * nablaB);
     }
 
     proc backprop(const ref X: lina.Vector(real(64)), const ref Y: lina.Vector(real(64))) {

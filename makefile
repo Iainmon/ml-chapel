@@ -39,6 +39,21 @@ linatest: clean
 	echo "Build complete."
 	./build/LinearTest
 
+speedtest:
+	for n in 10 50 100 500 1000 4000 ; do \
+		START=$$(date +%s)\
+		; ./build/classifier --epochs=100 --numImages=$$n --useNewIter=true > /dev/null \
+		; STOP=$$(date +%s) \
+		; echo "[iter] Images $$n, Execution time: $$((STOP-START))"; \
+	done
+
+	for n in 10 50 100 500 1000 4000 ; do \
+		START=$$(date +%s)\
+		; ./build/classifier --epochs=100 --numImages=$$n --useNewIter=false > /dev/null \
+		; STOP=$$(date +%s) \
+		; echo "[non-iter] Images, $$n, Execution time: $$((STOP-START))" ; \
+	done
+
 clean: 
 	rm -rf build
 	mkdir build
