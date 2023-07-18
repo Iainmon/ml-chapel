@@ -47,21 +47,21 @@ speedtest:
 		START=$$(date +%s)\
 		; $(python_bin) week2/classifier.py $$n > /dev/null 2> /dev/null\
 		; STOP=$$(date +%s) \
-		; echo "[non-iter] Images, $$n, Execution time: $$((STOP-START))" ; \
+		; echo "[python] Images: $$n, Execution time: $$((STOP-START))" ; \
 	done
 
 	for n in 10 50 100 500 1000 4000 8000 12000 16000 20000 30000 40000 ; do \
 		START=$$(date +%s)\
 		; ./build/classifier --epochs=100 --numImages=$$n --useNewIter=true > /dev/null \
 		; STOP=$$(date +%s) \
-		; echo "[iter] Images $$n, Execution time: $$((STOP-START))"; \
+		; echo "[iter] Images: $$n, Execution time: $$((STOP-START))"; \
 	done
 
 	for n in 10 50 100 500 1000 4000 8000 12000 16000 20000 30000 40000 ; do \
 		START=$$(date +%s)\
 		; ./build/classifier --epochs=100 --numImages=$$n --useNewIter=false > /dev/null \
 		; STOP=$$(date +%s) \
-		; echo "[non-iter] Images, $$n, Execution time: $$((STOP-START))" ; \
+		; echo "[non-iter] Images: $$n, Execution time: $$((STOP-START))" ; \
 	done
 
 clean: 
