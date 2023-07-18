@@ -506,7 +506,20 @@ proc randomVector(n: int, type eltType=real(64)) {
 }
 
 proc argmax(m: Matrix(real)) {
-    var v = m.vector;
+    const v = m.vector;
+    var max = v[0];
+    var argmax = 0;
+    for i in v.domain {
+        if v[i] > max {
+            max = v[i];
+            argmax = i;
+        }
+    }
+    return argmax;
+}
+
+proc argmax(m: Vector(real)) {
+    const v = m.vector;
     var max = v[0];
     var argmax = 0;
     for i in v.domain {

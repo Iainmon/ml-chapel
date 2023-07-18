@@ -22,7 +22,7 @@ else
 endif
 
 classifier: clean
-	chpl $(fast_flag) $(my_lib) $(blas_libs)  $(output)/classifier week4/classifier.chpl
+	chpl $(fast_flag) $(my_lib) $(blas_libs)  $(output)/classifier week5/classifier.chpl
 	echo "Build complete."
 	./build/classifier
 

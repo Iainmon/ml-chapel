@@ -10,7 +10,7 @@ import Random;
 
 writeln("Loading data...");
 
-config const numImages = 100;
+config const numImages = 50;
 config const testSize = 10;
 config const testInterval = 10;
 
@@ -79,10 +79,12 @@ for i in 1..epochs {
     // const cached = [(x,y) in shuffledData] (new lina.Vector(x), new lina.Vector(y));
 
     if i % testInterval == 0 {
-        for (X,Y) in testData {
-            var Z = net.feedForwardM(X);
-            writeln("Input: [image] Expected: ", Y.transpose().matrix, " Output: ", Z.transpose().matrix, " (",lina.argmax(Y.transpose())," , ", lina.argmax(Z.transpose()), ")");
-        }
+        const (correct, c, failed) = net.evaluate(testData);
+        writeln("Correct: ", correct, " Failed: ", failed, " Cost: ", c);
+        // for (X,Y) in testData {
+        //     var Z = net.feedForward(X);
+        //     writeln("Input: [image] Expected: ", Y.transpose().matrix, " Output: ", Z.transpose().matrix, " (",lina.argmax(Y.transpose())," , ", lina.argmax(Z.transpose()), ")");
+        // }
     }
 
 
@@ -112,8 +114,8 @@ for i in 1..epochs {
             // var localCost = net.costM(X,Y);
             // writeln("LocalCost: ",localCost);
             // cost += localCost;
-            var Z = net.feedForwardM(X);
-            cost += net.costM(Z,Y);
+            var Z = net.feedForward(X);
+            cost += net.cost(Z,Y);
             // net.adjust(x, y, lr, eta);
         }
     }
