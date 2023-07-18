@@ -127,7 +127,7 @@ class Network {
     proc updateBatchNew(const ref batch: [?d] (lina.Vector(real(64)),lina.Vector(real(64))), eta: real(64)) {
         const scale = eta / batch.size;
         forall (x,y) in batch {
-            for ((nablaB,nablaW),i) in zip(backpropIter(x,y),0..) {
+            foreach ((nablaB,nablaW),i) in zip(backpropIter(x,y),0..) {
                 biases[biases.size - i - 1] -= scale * nablaB;
                 weights[weights.size - i - 1] -= scale * nablaW;
             }
