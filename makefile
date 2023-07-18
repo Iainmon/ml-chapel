@@ -5,9 +5,11 @@ my_lib = -M lib
 
 UNAME := $(shell uname)
 ifeq ($(UNAME), Linux)
+	python_bin = /usr/bin/python3
 	blas_libs = -I/chapel/home/moncrief/blas/include -L/chapel/home/moncrief/blas/lib -lopenblas
 endif
 ifeq ($(UNAME), Darwin)
+	python_bin = /opt/homebrew/bin/python3
 	blas_libs = -I/opt/homebrew/opt/openblas/include -L/opt/homebrew/opt/openblas/lib -lblas
 endif
 
@@ -43,7 +45,7 @@ speedtest:
 
 	for n in 10 50 100 500 1000 4000 8000 12000 16000 20000 30000 40000 ; do \
 		START=$$(date +%s)\
-		; python3 week2/classifier.py $$n > /dev/null 2> /dev/null\
+		; $(python_bin) week2/classifier.py $$n > /dev/null 2> /dev/null\
 		; STOP=$$(date +%s) \
 		; echo "[non-iter] Images, $$n, Execution time: $$((STOP-START))" ; \
 	done
