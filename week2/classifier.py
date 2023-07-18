@@ -2,7 +2,7 @@
 import network
 import emnist
 import numpy as np
-
+import sys
 
 # training_data, validation_data, test_data = mnist_loader.load_data_wrapper()
 
@@ -27,7 +27,8 @@ for i, l in enumerate(label_vetctors):
 
 training_data = list(zip(image_vectors, label_vetctors))
 
-training_data = training_data[:20000]
+num_images = int(sys.argv[1])
+training_data = training_data[:(num_images - int((num_images / 10)))]
 
 
 net = network.Network([784,200,80, 10])
@@ -35,7 +36,7 @@ net = network.Network([784,200,80, 10])
 
 # train the network
 
-epochs = 30000
+epochs = 100 # 30000
 learning_rate = 0.5
 
 for epoch in range(epochs):
@@ -51,6 +52,9 @@ for epoch in range(epochs):
         local_cost = net.cost(output_activations, y)
         cost += local_cost
 
+    if epoch % 100 == 0:
+        net.evaluate(training_data)
+
     net.update_mini_batch(training_data, learning_rate)
 
     print(f'Cost: {cost/ len(training_data)}')
@@ -58,10 +62,10 @@ for epoch in range(epochs):
 
 # test the network
 
-# for (x,y) in training_data:
-#     output_activations = net.feedforward(x)
-#     print(f'Prediction: {np.argmax(output_activations)}')
-#     print(f'Actual: {np.argmax(y)}')
-#     print('----')
+for (x,y) in training_data:
+    output_activations = net.feedforward(x)
+    print(f'Prediction: {np.argmax(output_activations)}')
+    print(f'Actual: {np.argmax(y)}')
+    print('----')
 
 
