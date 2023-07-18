@@ -39,7 +39,7 @@ proc loadImages(num: int) {
 
     for i in images.domain {
         images[i] = readImage();
-        writeln("Image ", i);
+        // writeln("Image ", i);
     }
     return images;
 

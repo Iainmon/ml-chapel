@@ -78,7 +78,7 @@ class Network {
         return A;
     }
 
-    iter forwardPropagate(in A: lina.Vector(real)) {
+    iter forwardPropagationIter(in A: lina.Vector(real)) {
         for (B, W,i) in zip(biases, weights,0..) {
             const Z = (W * A) + B;
             // Efficient feed forward implementation
@@ -87,6 +87,73 @@ class Network {
             A.underlyingVector = v;
             yield (Z,A,i);
         }
+    }
+
+    proc forwardPropagation(const ref X: lina.Vector(real)) {
+        var As: [0..#(biases.size + 1)] lina.Vector(real(64)); // Store all activation vectors
+        var Zs: [0..#biases.size] lina.Vector(real(64));
+        As[0] = X;
+        for (Z,X,i) in forwardPropagationIter(X) {
+            As[i + 1] = X;
+            Zs[i] = Z;
+        }
+        return (Zs,As);
+    }
+
+    iter backpropIter(const ref X: lina.Vector(real), const ref Y: lina.Vector(real)) {
+        const (Zs,As) = forwardPropagation(X);
+        const AsSize = As.size;
+        const ZsSize = Zs.size;
+
+        var delta = costDerivative(As[AsSize - 1], Y) * sigmoidPrime(Zs[ZsSize - 1]);
+
+        // const nablaB = delta;
+        // const nablaW = delta * As[AsSize - 2].transpose();
+        // yield (nablaB,nablaW);
+
+        for l in 1..<numLayers {
+            const Z = Zs[ZsSize - l];
+            const A = As[AsSize - (l + 1)];
+            const SP = sigmoidPrime(Z);
+            const W = weights[getIdx(weights,(-l) + 1)];
+
+            if l == 1 then
+                delta = costDerivative(As[AsSize - 1], Y) * SP;
+            else 
+                delta = (W.transpose() * delta) * SP;
+            
+            const nablaB = delta;
+            const nablaW = delta * A.transpose();
+            yield (nablaB,nablaW);
+        }
+    }
+
+    proc updateBatchNew(const ref batch: [?d] (lina.Vector(real(64)),lina.Vector(real(64))), eta: real(64)) {
+        // var nablaB = [b in biases] lina.zeros(b.shape[0],1).vectorize();
+        // var nablaW = [w in weights] lina.zeros(w.shape[0],w.shape[1]);
+
+        const scale = eta / batch.size;
+
+        forall (x,y) in batch {
+
+            foreach ((nablaB,nablaW),i) in zip(backpropIter(x,y),0..) {
+                biases[biases.size - i - 1] -= scale * nablaB;
+                weights[weights.size - i - 1] -= scale * nablaW;
+            }
+
+
+
+
+            // const (deltaNablaB, deltaNablaW) = backprop(x,y);
+            // forall (nb,i) in zip(deltaNablaB,nablaB.domain) do nablaB[i] += nb;
+            // forall (nw,i) in zip(deltaNablaW,nablaW.domain) do nablaW[i] += nw;
+            // nablaB += deltaNablaB; // Prefered implementation
+            // nablaW += deltaNablaW;
+        }
+        // forall (nb,i) in zip(nablaB,biases.domain) do biases[i] -= ((eta / batch.size) * nb);
+        // forall (nw,i) in zip(nablaW,weights.domain) do weights[i] -= ((eta / batch.size) * nw);
+        // weights -= ((eta / batch.size) * nablaW); // Prefered implementation
+        // biases -= ((eta / batch.size) * nablaB);
     }
 
     proc backprop(const ref X: lina.Vector(real(64)), const ref Y: lina.Vector(real(64))) {
@@ -133,6 +200,8 @@ class Network {
         }
         return (nablaB,nablaW);
     }
+
+
 
     proc updateBatch(const ref batch: [?d] (lina.Vector(real(64)),lina.Vector(real(64))), eta: real(64)) {
         var nablaB = [b in biases] lina.zeros(b.shape[0],1).vectorize();
@@ -187,6 +256,7 @@ class Network {
         return cost(new lina.Vector(output), new lina.Vector(expected));
 
 }
+
 
 
 proc main() {

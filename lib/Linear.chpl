@@ -19,7 +19,7 @@ record Vector {
     var vectorDomain: domain(1,int);
     var underlyingVector: [vectorDomain] eltType;
 
-    proc init(A: [?d] ?eltType) where d.rank == 1 {
+    proc init(const ref A: [?d] ?eltType) where d.rank == 1 {
         this.eltType = eltType;
         this.vectorDomain = d;
         this.underlyingVector = A;
@@ -52,7 +52,7 @@ record Vector {
             yield underlyingVector[i];
     }
 
-    proc vector { return underlyingVector; }
+    proc vector const ref { return underlyingVector; }
     proc shape { return vectorDomain.shape; }
 
     proc toMatrix() do return new Matrix(this.underlyingVector);
@@ -78,7 +78,7 @@ record Vector {
     }
     operator +(lhs: Vector, rhs: eltType) {
         const A = lhs.underlyingVector + rhs;
-        return new Vector();
+        return new Vector(A);
     }
     operator +(lhs: eltType, rhs: Vector) {
         const A = lhs + rhs.underlyingVector;
@@ -262,7 +262,7 @@ record Matrix {
     // }
 
 
-    proc matrix { return underlyingMatrix; }
+    proc matrix const ref { return underlyingMatrix; }
 
     proc vectorize() { return new Vector(this); }
     

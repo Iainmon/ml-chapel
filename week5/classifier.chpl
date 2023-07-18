@@ -10,9 +10,12 @@ import Random;
 
 writeln("Loading data...");
 
-config const numImages = 50;
-config const testSize = 10;
-config const testInterval = 10;
+config const numImages = 8000;
+config const testSize = 100;
+config const testInterval = 100;
+config const epochs = 8000;
+
+config const useNewIter = false;
 
 var images = MNIST.loadImages(numImages);
 var (labels,labelVectors) = MNIST.loadLabels(numImages);
@@ -26,7 +29,7 @@ var imageVectors: [images.domain] [imageVectorDomain] real;
 for i in images.domain {
     for (m,n) in images[i].domain {
         var r = chai.rng.getNext() / 1000.0;
-        imageVectors[i][m * 28 + n] = images[i][m,n] + r;
+        imageVectors[i][m * 28 + n] = images[i][m,n]; //+ r;
     }
 }
 
@@ -52,6 +55,8 @@ var net = new chai.Network(layerDimensions);
 // var net2 = chai.loadModel("model.bin");
 
 writeln("Training network...");
+writeln("Bias domain: ", net.biasesDomain);
+writeln("Weight domain: ", net.weightsDomain);
 
 // writeln(lina.randn(10,1));
 // halt(0);
@@ -59,7 +64,6 @@ writeln("Training network...");
 config const learningRate = 0.8; // 0.05
 const decay = 0.9; // 0.1
 const initialVariance = 0.1; // 0.1
-const epochs = 8000;
 
 
 const trainingData = [(x,y) in data[testSize..]] (new lina.Vector(x), new lina.Vector(y));
@@ -89,7 +93,10 @@ for i in 1..epochs {
 
 
 
-    net.updateBatch(trainingData,learningRate);
+    if useNewIter then 
+        net.updateBatchNew(trainingData,learningRate);
+    else 
+        net.updateBatch(trainingData,learningRate);
 
 
 
@@ -106,18 +113,19 @@ for i in 1..epochs {
     // net.train(trainData, lr);
     var cost = 0.0;
     if i % 1 == 0 {
-        for (X,Y) in trainingData {
-            // writeln("Input: ", x, " Expected: ", y, " Output: ", net.feedForward(x).transpose().matrix);
-            // var X = lina.vectorToMatrix(x);
-            // var Y = lina.vectorToMatrix(y);// .transpose().matrix;
-            // var Z = lina.vectorToMatrix(z);
-            // var localCost = net.costM(X,Y);
-            // writeln("LocalCost: ",localCost);
-            // cost += localCost;
-            var Z = net.feedForward(X);
-            cost += net.cost(Z,Y);
-            // net.adjust(x, y, lr, eta);
-        }
+        // for (X,Y) in trainingData {
+        //     // writeln("Input: ", x, " Expected: ", y, " Output: ", net.feedForward(x).transpose().matrix);
+        //     // var X = lina.vectorToMatrix(x);
+        //     // var Y = lina.vectorToMatrix(y);// .transpose().matrix;
+        //     // var Z = lina.vectorToMatrix(z);
+        //     // var localCost = net.costM(X,Y);
+        //     // writeln("LocalCost: ",localCost);
+        //     // cost += localCost;
+        //     var Z = net.feedForward(X);
+        //     cost += net.cost(Z,Y);
+        //     // net.adjust(x, y, lr, eta);
+        // }
+        cost = + reduce forall (X,Y) in trainingData do net.cost(net.feedForward(X),Y);
     }
     
 
