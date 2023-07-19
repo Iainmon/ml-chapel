@@ -66,7 +66,7 @@ writeln("Model loaded.");
 // writeln(lina.randn(10,1));
 // halt(0);
 
-config const learningRate = 0.8; // 0.05
+config const learningRate = 0.5; // 0.05
 const decay = 0.9; // 0.1
 const initialVariance = 0.1; // 0.1
 
@@ -149,6 +149,12 @@ for i in 1..epochs {
     // frustration += 1 / (((cost - lastCost) + 0.001) * patience);
     // lastCost = cost;
 }
+
+writeln("Done training.");
+writeln("Saving model...");
+net.save("mnist.classifier.model.bin");
+writeln("Model saved.");
+
 
 writeln("--------------- Results ---------------");
 
