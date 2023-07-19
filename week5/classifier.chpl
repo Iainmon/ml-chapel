@@ -10,7 +10,7 @@ import Random;
 
 writeln("Loading data...");
 
-config const numImages = 10;
+config const numImages = 1000;
 config const testSize = (numImages / 10):int;
 config const testInterval = 100;
 config const epochs = 8000;
@@ -19,7 +19,7 @@ config const useNewIter = false;
 
 var images = MNIST.loadImages(numImages);
 var (labels,labelVectors) = MNIST.loadLabels(numImages);
-writeln(labels);
+// writeln(labels);
 
 
 var imageVectorDomain = {0..#(28 * 28)};
@@ -71,8 +71,10 @@ const decay = 0.9; // 0.1
 const initialVariance = 0.1; // 0.1
 
 
-const trainingData = [(x,y) in data[testSize..]] (new lina.Vector(x), new lina.Vector(y));
-const testData = [(x,y) in data[0..#testSize]] (new lina.Vector(x), new lina.Vector(y));
+const vectorizedData = [(x,y) in data] ((new lina.Vector(x)).normalize(), (new lina.Vector(y)).normalize());
+const trainingData = vectorizedData[testSize..];
+const testData = vectorizedData[0..#testSize];
+
 
 // var cached = [(x,y) in shuffledData] (lina.vectorToMatrix(x), lina.vectorToMatrix(y));
 var costDiff = 1.0;
@@ -108,28 +110,8 @@ for i in 1..epochs {
 
     var eta = initialVariance * exp(- decay * i:real);
 
-    var lr = learningRate;
-    // if lr * eta > 0.3 {
-    //     lr *= eta;
-    // } else {
-    //     lr = 0.3;
-    // } // abs(lina.random(1,1).matrix[0,0]);//* ;
-
-    // net.train(trainData, lr);
     var cost = 0.0;
     if i % 1 == 0 {
-        // for (X,Y) in trainingData {
-        //     // writeln("Input: ", x, " Expected: ", y, " Output: ", net.feedForward(x).transpose().matrix);
-        //     // var X = lina.vectorToMatrix(x);
-        //     // var Y = lina.vectorToMatrix(y);// .transpose().matrix;
-        //     // var Z = lina.vectorToMatrix(z);
-        //     // var localCost = net.costM(X,Y);
-        //     // writeln("LocalCost: ",localCost);
-        //     // cost += localCost;
-        //     var Z = net.feedForward(X);
-        //     cost += net.cost(Z,Y);
-        //     // net.adjust(x, y, lr, eta);
-        // }
         cost = + reduce forall (X,Y) in trainingData do net.cost(net.feedForward(X),Y);
     }
     
@@ -137,22 +119,17 @@ for i in 1..epochs {
     var globalCost = cost / (data.domain.size: real);
     ChapelIO.writef("Cost: %20.30r\n", globalCost);
 
-    writeln("GobalCost: ",globalCost, " (", cost, ")", " LearningRate: ", lr, " Eta: ", eta);
+    writeln("GobalCost: ",globalCost, " (", cost, ")", " LearningRate: ", learningRate, " Eta: ", eta);
 
     if globalCost <= 0.005 && cost != 0.0 {
         writeln("I think that's enough...");
         break;
     }
-    costDiff = abs(globalCost - lastCost);
-    lastCost = globalCost;
-    // writeln("Frustration: ", frustration);
-    // frustration += 1 / (((cost - lastCost) + 0.001) * patience);
-    // lastCost = cost;
 }
 
 writeln("Done training.");
 writeln("Saving model...");
-net.save("mnist.classifier.model.bin");
+net.save("mnist.normalized.classifier.model.bin");
 writeln("Model saved.");
 
 

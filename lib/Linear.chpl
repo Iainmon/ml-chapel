@@ -64,7 +64,17 @@ record Vector {
         //     a[0,i] = this.underlyingVector[i];
         // }
         return new Matrix(a);
+    }
 
+    proc magnitude() {
+        const AA = this.underlyingVector * this.underlyingVector;
+        const sum = + reduce AA;
+        return sqrt(sum);
+    }
+
+    proc normalize() {
+        const mag = 1.0 / this.magnitude();
+        return mag * this;
     }
 
     operator =(ref lhs: Vector, rhs: [?d] eltType) where d.rank == 1 {
