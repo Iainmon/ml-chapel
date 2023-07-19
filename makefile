@@ -67,3 +67,6 @@ speedtest:
 clean: 
 	rm -rf build
 	mkdir build
+
+monster:
+	./build/classifier --numImages=59000  --epochs=12000 --testSize=100 | tee bigtrain.txt
