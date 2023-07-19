@@ -537,7 +537,37 @@ proc eye(n: int) {
 
 
 
+record TensorCoder {
+    var tensorDomain: domain(2,int) = {0..#0, 0..#0};
+    var underlyingTensor: [tensorDomain] real;
+    var wasVector: bool;
+}
 
+proc encodeVector(V: Vector(real)): TensorCoder {
+    var v = V.toMatrix().matrix;
+    var vd = v.domain;
+    var T = new TensorCoder(vd,v,true);
+    return T;
+}
+
+proc encodeMatrix(M: Matrix(real)): TensorCoder {
+    var m = M.matrix;
+    var md = m.domain;
+    var T = new TensorCoder(md,m,false);
+    return T;
+}
+
+proc decodeVector(T: TensorCoder): Vector(real) {
+    if !T.wasVector then
+        halt("Error: trying to decode a matrix as a vector.");
+    return new Vector(new Matrix(T.underlyingTensor));
+}
+
+proc decodeMatrix(T: TensorCoder): Matrix(real) {
+    if T.wasVector then
+        halt("Error: trying to decode a vector as a matrix.");
+    return new Matrix(T.underlyingTensor);
+}
 
 
 

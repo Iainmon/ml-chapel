@@ -12,6 +12,7 @@ use IO.FormattedIO;
 import IO;
 import BinaryIO;
 import Json;
+import RecordParser;
 
 
 
@@ -233,7 +234,134 @@ class Network {
     proc cost(output: [?d] real, expected: [d] real): real(64) do
         return cost(new lina.Vector(output), new lina.Vector(expected));
 
+    proc save(path: string) {
+        try {
+            var file = IO.open(path, IO.ioMode.cw);
+            var serializer = new BinaryIO.BinarySerializer(IO.ioendian.big);
+            var fw = file.writer(serializer=serializer);
+            fw.write(numLayers);
+            for l in layerSizes do
+                fw.write(l);
+            for bias in biases do
+                for b in bias do
+                    fw.write(b);
+            for weight in weights do
+                for w in weight do
+                    fw.write(w);
+            fw.close();
+
+            // var writer = file.writer();
+            // var coded = encoder();
+            // writer.write(coded);
+        } catch e: Error {
+            writeln("Error saving network: ", e);
+        }
+
+    }
+
+
+
+    proc encoder() {
+        var codedBiases = [b in biases] lina.encodeVector(b);
+        var codedWeights = [w in weights] lina.encodeMatrix(w);
+        return new NetworkCoder(
+            layerSizesDomain,
+            layerSizes,
+            biasesDomain,
+            codedBiases,
+            weightsDomain,
+            codedWeights
+        );
+    }
+    proc init(nc: NetworkCoder) {
+        this.init(nc.layerSizes);
+        this.biases = [b in nc.biases] lina.decodeVector(b);
+        this.weights = [w in nc.weights] lina.decodeMatrix(w);
+    }
+
 }
+
+
+record NetworkCoder {
+    var layerSizesDomain: domain(1,int);
+    var layerSizes: [layerSizesDomain] int;
+
+    var biasesDomain: domain(1,int);
+    var biases: [biasesDomain] lina.TensorCoder;
+
+    var weightsDomain: domain(1,int);
+    var weights: [weightsDomain] lina.TensorCoder;
+}
+
+operator :(from: string, type toType: domain(1,int)) {
+    writeln("Converting ", from, " to ", toType:string);
+    var tmp: domain(1,int) = {0..#0}; 
+    return tmp;
+}
+operator :(from: string, type toType: domain(2,int)) {
+    writeln("Converting ", from, " to ", toType:string);
+    var tmp: domain(1,int) = {0..#0}; 
+    return tmp;
+}
+// operator :(from: string, type toType: [?d_] int) {
+//     writeln("Converting ", from, " to ", toType:string);
+//     var d: domain(1,int) = {0..#0};
+//     var tmp: [d] int;
+//     return tmp;
+// }
+
+const intArr: [0..#1] int = [0];
+
+operator :(from: string, type toType: intArr.type) {
+    writeln("Converting ", from, " to ", toType:string);
+    var d: domain(1,int) = {0..#0};
+    var tmp: [d] int(64);
+    return tmp;
+}
+
+const tcArr: [0..#0] lina.TensorCoder;
+
+operator :(from: string, type toType: tcArr.type) {
+    writeln("Converting ", from, " to ", toType:string);
+    var d: domain(1,int) = {0..#0};
+    var tmp: [d] lina.TensorCoder;
+    return tmp;
+}
+
+
+proc loadModel(path: string): Network {
+    try {
+        var file = IO.open(path, IO.ioMode.rw);
+        var deserializer = new BinaryIO.BinaryDeserializer(IO.ioendian.big);
+        var fr = file.reader(deserializer=deserializer);
+
+        const numLayers: int = fr.read(int);
+        var layerSizes: [0..#(numLayers)] int;
+        for i in 0..#numLayers do
+            layerSizes[i] = fr.read(int);
+        
+        var net = new Network(layerSizes);
+        for bias in net.biases do
+            for b in bias do
+                b = fr.read(real);
+
+        for weight in net.weights do
+            for w in weight do
+                w = fr.read(real);
+
+        return net;
+
+        
+    } catch e: Error {
+        writeln("Error loading network: ", e);
+        halt(0);
+    }
+
+    // var decoder = NetworkCoder();
+    // reader.read(decoder);
+    // return decoder.decoder();
+}
+
 
 
 

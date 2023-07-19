@@ -10,7 +10,7 @@ import Random;
 
 writeln("Loading data...");
 
-config const numImages = 8000;
+config const numImages = 10;
 config const testSize = (numImages / 10):int;
 config const testInterval = 100;
 config const epochs = 8000;
@@ -57,6 +57,11 @@ var net = new chai.Network(layerDimensions);
 writeln("Training network...");
 writeln("Bias domain: ", net.biasesDomain);
 writeln("Weight domain: ", net.weightsDomain);
+
+net.save("classifier.model.bin");
+writeln("Model saved.");
+var net2 = chai.loadModel("classifier.model.bin");
+writeln("Model loaded.");
 
 // writeln(lina.randn(10,1));
 // halt(0);
