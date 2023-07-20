@@ -10,16 +10,22 @@ import Random;
 
 writeln("Loading data...");
 
-config const numImages = 1000;
+config const numImages = 10;
 config const testSize = (numImages / 10):int;
 config const testInterval = 100;
 config const epochs = 8000;
+config const saveInterval = 500;
 
 config const useNewIter = false;
 
 var images = MNIST.loadImages(numImages);
 var (labels,labelVectors) = MNIST.loadLabels(numImages);
 // writeln(labels);
+
+for (i,im) in zip(images.domain,images) {
+    MNIST.printImage(im);
+    writeln("----------------- ", labels[i], " -----------------");
+}
 
 
 var imageVectorDomain = {0..#(28 * 28)};
@@ -88,6 +94,12 @@ for i in 1..epochs {
 
     // shuffle(shuffledData);
     // const cached = [(x,y) in shuffledData] (new lina.Vector(x), new lina.Vector(y));
+
+    if i % saveInterval == 0 {
+        writeln("Saving model...");
+        net.save("mnist.normalized.classifier.model.bin");
+        writeln("Model saved.");
+    }
 
     if i % testInterval == 0 {
         const (correct, c, failed) = net.evaluate(testData);

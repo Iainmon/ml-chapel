@@ -28,6 +28,16 @@ classifier: clean
 	echo "Build complete."
 	./build/classifier
 
+runClassifier: clean
+	chpl $(fast_flag) $(my_lib) $(blas_libs)  $(output)/runClassifier week5/runClassifier.chpl
+	echo "Build complete."
+	./build/runClassifier
+
+enhancedMap: clean
+	chpl $(fast_flag) $(my_lib) $(blas_libs)  $(output)/enhancedMap week5/enhancedMap.chpl
+	echo "Build complete."
+	./build/enhancedMap
+
 graph: clean
 	chpl $(fast_flag) $(my_lib) $(blas_libs) $(output)/graph lib/Graph.chpl
 	echo "Build complete."
