@@ -141,7 +141,7 @@ for i in 1..epochs {
 
 writeln("Done training.");
 writeln("Saving model...");
-net.save("mnist.normalized.classifier.model.bin");
+// net.save("mnist.normalized.classifier.model.bin");
 writeln("Model saved.");
 
 
