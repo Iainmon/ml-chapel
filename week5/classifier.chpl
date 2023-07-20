@@ -97,7 +97,7 @@ for i in 1..epochs {
 
     if i % saveInterval == 0 {
         writeln("Saving model...");
-        net.save("mnist.normalized.classifier.model.bin");
+        net.save("mnist.normalized.classifier.model" + i:string + ".bin");
         writeln("Model saved.");
     }
 
