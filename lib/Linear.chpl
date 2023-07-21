@@ -13,6 +13,13 @@ import IO;
 import Random;
 import Math;
 
+proc err(args...?n) {
+    var s = "";
+    for param i in 0..<n {
+        s += args(i): string;
+    }
+    try! throw new Error(s);
+}
 
 record Vector {
     type eltType;
@@ -143,6 +150,11 @@ record Vector {
     proc frobeniusNormPowTwo() {
         const AA = this.underlyingVector ** 2.0;
         return + reduce AA;
+    }
+
+    proc fmap(fn) {
+        const v = fn(this.underlyingVector);
+        return new Vector(v);
     }
 }
 

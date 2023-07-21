@@ -23,6 +23,12 @@ else
 	fast_flag = --baseline
 endif
 
+torch: clean
+	chpl $(fast_flag) $(my_lib) $(blas_libs)  $(output)/Torch week6/Torch.chpl
+	echo "Build complete."
+	./build/Torch
+
+
 classifier: clean
 	chpl $(fast_flag) $(my_lib) $(blas_libs)  $(output)/classifier week5/classifier.chpl
 	echo "Build complete."
