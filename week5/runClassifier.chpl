@@ -3,9 +3,11 @@ import Chai as chai;
 import IO;
 import MNIST;
 
-config const modelFile = "classifier.model.bin";
+config const modelFile = "/Users/iainmoncrief/Documents/Sandbox/models/mnist.classifier.model";
 
 config const testFile = "/Users/iainmoncrief/Documents/Processing/sketch_230720a/digit.txt"; // "digit.txt";
+
+config const normalize = false;
 
 proc loadImageBitmap(fn: string): [0..#28,0..#28] real {
     var file = IO.open(fn, IO.ioMode.r);
@@ -33,7 +35,10 @@ proc vectorizeBitmap(bitmap: [0..#28,0..#28] real): [0..#784] real {
 
 proc main() {
     writeln("Loading image...");
-    const image = new lina.Vector(vectorizeBitmap(loadImageBitmap(testFile)));
+    var image = new lina.Vector(vectorizeBitmap(loadImageBitmap(testFile)));
+    
+    if normalize then
+        image = image.normalize();
 
     writeln("Loading model...");
     const model = chai.loadModel(modelFile);
