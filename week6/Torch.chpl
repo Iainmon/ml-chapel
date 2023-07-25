@@ -3,6 +3,7 @@ module Torch {
 
 import Linear as la;
 import Math;
+import Tensor;
 
 proc foo() ref: real {
     return 1.0;
@@ -67,6 +68,7 @@ class Layer {
     iter parameters() ref: real {  }
     iter parametersGrad() ref: real {  }
 
+    // proc updateParameter(i: int, ): void { }
 }
 
 // Sigmoid and Dense can be two seperate classes
@@ -124,7 +126,6 @@ class Dense: Layer {
         weightsGrad = newDelta * lastInput.transpose();
         return newDelta;
     }
-
 }
 
 
@@ -205,7 +206,6 @@ class SGDOptimizer {
                 p -= this.learningRate * dp;
     }
 }
-
 
 
 proc main() {

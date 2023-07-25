@@ -1,36 +1,40 @@
+class Cow {
+    var age: int;
+}
 
+class ByteStream {
+    var cow: Cow;
+    proc init(in c: Cow) {
+        cow = c;
+        writeln(cow);
+    }
+}
 
-record Mat {
+var bs = new ByteStream(new Cow(10));
+
+var bs2 = new ByteStream(new shared Cow(10));
+
+type SharedCow = shared Cow;
+
+var bs3 = new ByteStream(new SharedCow(10));
+
+record Tensor {
+    param rank: int;
     type eltType;
-    var dom: domain(2,int);
-    var underlying: [dom] eltType;
-    proc init(type eltType) {
+
+    var _domain: domain(rank);
+    var data: [_domain] eltType;
+
+    proc init(type eltType, shape: int ...?dim) {
+
+        this.rank = dim;
         this.eltType = eltType;
-        dom = [0..#0, 0..#0];
-        underlying = 0;
+        var ranges: dim*range;
+        // var dims: [0..#dim] int;
+        for (size,r) in zip(shape,ranges) do r = 0..#size;
+        this._domain = {(...ranges)};
     }
-    proc init(M: [?d] ?t) {
-        eltType = t;
-        dom = d;
-        underlying = M;
-    }
-
-    operator +=(ref lhs: Mat, rhs: Mat) {
-        lhs.underlying += rhs.underlying;
-    }
-
 }
+var t = new Tensor(real,2,3); // Should be a 2x3 matrix
 
-
-proc main() {
-    var m: [0..#3, 0..#3] int = 1;
-    var A = new Mat(m);
-    var B = new Mat(m);
-    A += B;
-    writeln(A);
-
-    var As = [i in 0..5] new Mat(m);
-    var Bs = [i in 0..5] new Mat(m);
-    As += Bs;
-    writeln(As);
-}
+writeln(t.rank);

@@ -28,6 +28,12 @@ torch: clean
 	echo "Build complete."
 	./build/Torch
 
+tensor: clean
+	chpl $(fast_flag) $(my_lib) $(blas_libs)  $(output)/Tensor week6/Tensor.chpl
+	echo "Build complete."
+	./build/Tensor
+
+
 
 classifier: clean
 	chpl $(fast_flag) $(my_lib) $(blas_libs)  $(output)/classifier week5/classifier.chpl
