@@ -2,6 +2,9 @@ module Tensor {
 
     import Linear as la;
     import Math;
+    import IO;
+    import IO.FormattedIO;
+
 
     proc err(args...?n) {
         var s = "";
@@ -9,6 +12,27 @@ module Tensor {
             s += args(i): string;
         }
         try! throw new Error(s);
+    }
+
+    proc nbase(bounds: ?rank*int, n: int): rank*int {
+        var filled: rank*int;
+        var idx: int = rank - 1;
+        var curr: int = 0;
+        var carry: bool = false;
+        while curr < n {
+            filled[idx] += 1;
+            if filled[idx] >= bounds[idx] {
+                carry = true;
+                filled[idx] = 0;
+                idx -= 1;
+                if idx < 0 then err("Error in nbase: ", n," is too large for bounds.");
+            } else {
+                carry = false;
+                idx = rank - 1;
+                curr += 1;
+            }
+        }
+        return filled;
     }
     
     record Tensor {
@@ -27,13 +51,13 @@ module Tensor {
             for (size,r) in zip(shape,ranges) do r = 0..#size;
             this._domain = {(...ranges)};
         }
-        proc init(type eltType, shape: int ...?dim) {
-            this.rank = dim ;
-            this.eltType = eltType;
-            var ranges: dim*range;
-            for (size,r) in zip(shape,ranges) do r = 0..#size;
-            this._domain = {(...ranges)};
-        }
+        // proc init(type eltType, shape: int ...?dim) {
+        //     this.rank = dim ;
+        //     this.eltType = eltType;
+        //     var ranges: dim*range;
+        //     for (size,r) in zip(shape,ranges) do r = 0..#size;
+        //     this._domain = {(...ranges)};
+        // }
         proc init(shape: int ...?dim) {
             this.rank = dim ;
             this.eltType = real;
@@ -61,7 +85,23 @@ module Tensor {
         //     this.data = 0.0;
         // }
 
-        // forwarding data only this;
+        forwarding data only this;
+
+
+        proc transpose() where rank == 1 {
+            const (p,) = shape;
+            var t = new Tensor(eltType,1,p);
+            t.data[0,..] = this.data;
+            return t;
+        }
+        proc transpose() where rank == 2 {
+            const (m,n) = this.shape;
+            var M: [0..#n,0..#m] eltType; 
+            forall (i,j) in M.domain {
+                M[i,j] = this.data[j,i];
+            }
+            return new Tensor(M);
+        }
 
         
         proc fmap(fn) {
@@ -69,6 +109,37 @@ module Tensor {
             return new Tensor(data);
         }
         
+        proc writeThis(fw: IO.fileWriter) throws {
+            fw.write("tensor(");
+            const shape = this.shape;
+            var first: bool = true;
+            for (x,i) in zip(data,0..) {
+                const idx = nbase(shape,i);
+                if idx[rank - 1] == 0 {
+                    if !first {
+                        fw.write("\n       ");
+                    }
+                    fw.write("[");
+                }
+                fw.writef("%{##.##########}",x);
+                
+                if idx[rank - 1] < shape[rank - 1] - 1 {
+                    if rank == 1 then
+                        fw.write("\n        ");
+                    else
+                        fw.write("  ");
+                } else {
+                    fw.write("]");
+                }
+
+                if rank > 2 {
+                    if idx[rank - 2] < shape[rank - 2] - 1 && i < data.domain.size - 1 then
+                        fw.writeln(",");
+                }
+                first = false;
+            }
+            fw.writeln(", shape=",this.shape,")");
+        }
 
     }
 
@@ -86,6 +157,10 @@ module Tensor {
     }
     operator -=(ref lhs: Tensor(?d), const ref rhs: Tensor(d)) {
         lhs.data -= rhs.data;
+    }
+    operator *(c: ?eltType, rhs: Tensor(?d,eltType)) {
+        const data = c * rhs.data;
+        return new Tensor(data);
     }
     operator *(lhs: Tensor(?d), rhs: Tensor(d)) {
         // Hermitian product, not composition
@@ -110,14 +185,14 @@ module Tensor {
         }
         return new Tensor(w);
     }
-    operator *(lhs: Tensor(1,?eltType), rhs: Tensor(2,eltType)): Tensor(1,eltType) {
+    operator *(lhs: Tensor(1,?eltType), rhs: Tensor(2,eltType)): Tensor(2,eltType) {
         const (p,) = lhs.shape;
         const (m,n) = rhs.shape;
         if m != 1 then
             err("Trying to apply a vector of shape ",lhs.shape, " to a matrix of shape ", rhs.shape);
         
-        const a = lhs.data;
-        const v = rhs.data;
+        const a = rhs.data;
+        const v = lhs.data;
         var b: [0..#p, 0..#n] eltType;
         forall (i,j) in b.domain {
             b[i,j] = v[i] * a[0,j];
@@ -148,10 +223,22 @@ module Tensor {
     proc _sigmoid(x: real): real {
         return 1.0 / (1.0 + Math.exp(-x));
     }
+    proc _sigmoidPrime(x: real): real {
+        const s = _sigmoid(x);
+        return s * (1.0 - s);
+    }
 
     proc sigmoid(t: Tensor(?d)): Tensor(d) {
         return t.fmap(_sigmoid);
     }
+    proc sigmoidPrime(t: Tensor(?d)): Tensor(d) {
+        return t.fmap(_sigmoidPrime);
+    }
+    proc frobeniusNormPowTwo(t: Tensor(?d)): real {
+        const AA = t.data ** 2.0;
+        return + reduce AA;
+    }
+
 
 }
 
