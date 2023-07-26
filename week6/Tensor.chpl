@@ -1,155 +1,170 @@
+module Tensor {
 
-record Tensor {
-    param rank: int;
-    type eltType = real;
+    import Linear as la;
+    import Math;
 
-    var _domain: domain(rank,int);
-    var data: [_domain] eltType;
-
-    proc init(type eltType, shape: int ...?dim) {
-        this.rank = dim ;
-        this.eltType = eltType;
-        var ranges: dim*range;
-        for (size,r) in zip(shape,ranges) do r = 0..#size;
-        this._domain = {(...ranges)};
-    }
-    proc init(shape: int ...?dim) {
-        this.rank = dim ;
-        this.eltType = real;
-        var ranges: dim*range;
-        for (size,r) in zip(shape,ranges) do r = 0..#size;
-        this._domain = {(...ranges)};
-    }
-    // proc init(shape: int ...?d) {
-    //     this.rank = d;
-    //     this.eltType = real;
-    //     this._domain = {(...shape)};
-    //     this.data = 0.0;
-    // }
-
-    // forwarding data only this;
-}
-
-class Layer {
-    // proc forwardProp(x: Tensor(?)): Tensor(?) { return x; }
-    proc dimIn() param: int do return 1;
-    proc dimOut() param: int do return 1;
-    // proc forwardProp(x: Tensor(?din)): Tensor(?dout) where dout == this.dimOut() && din == this.dimIn() {
-    //     new Tensor(this.dimOut());
-    // }
-
-    proc forwardProp(param din: int, param dout: int, x: Tensor(din)): Tensor(dout) {
-        return new Tensor(dout);
-    }
-
-}
-
-class Dense: Layer {
-    override proc dimIn() param: int do return 1;
-    override proc dimOut() param: int do return 1;
-    override proc forwardProp(param din: int, param dout: int, x: Tensor(din)): Tensor(dout) where din == 1 && dout == 1 {
-        return x;
-    }
-    // override proc forwardProp(param din: int, param dout: int, x: Tensor(din)): Tensor(dout) where din == 2 && dout == 1 {
-    //     return new Tensor(1);
-    // }
-}
-
-
-class Conv: Layer {
-    override proc dimIn() param: int do return 2;
-    override proc dimOut() param: int do return 2;
-    proc forwardProp(param din: int, param dout: int, x: Tensor(din)): Tensor(dout) where din == 2 && dout == 2 {
-        return x;
-    }
-}
-
-class MaxPool: Layer {
-    override proc dimIn() param: int do return 2;
-    override proc dimOut() param: int do return 1;
-    proc forwardProp(param din: int, param dout: int, x: Tensor(din)): Tensor(dout) where din == 2 && dout == 1 {
-        return new Tensor(real,2,2);
-    }
-}
-
-proc feedForwardRec(x: Tensor(?din), layers: [] shared Layer): Tensor(layers.first.dimOut()) {
-    const l = layers.first;
-    param dout = l.dimOut();
-    const y = l.forwardProp(din,dout,x);
-    if layers.size == 1 then return y;
-    return feedForwardRec(y,layers[1..]);
-}
-
-class Network {
-    var _layersDomain: domain(1,int);
-    var layers: [_layersDomain] shared Layer;
-
-    proc init(layers ...?nl) {
-        this._layersDomain = {0..#nl};
-        this.layers = layers;
-    }
-    proc forwardProp(x: Tensor(?)): Tensor(?) {
-
-        var y1: Tensor(1);
-        var y2: Tensor(2);
-        var lastRank: int = selectAssign(x,y1,y2);
-
-        for l in layers {
-            param din = l.dimIn();
-            param dout = l.dimOut();
-            select lastRank {
-                when 1 {
-                    var z = l.forwardProp(din,dout,y1);
-                    lastRank = selectAssign(z,y1,y2);
-                }
-                when 2 {
-                    var z = l.forwardProp(2,dout,y2);
-                    lastRank = selectAssign(z,y1,y2);
-                }
-            }
+    proc err(args...?n) {
+        var s = "";
+        for param i in 0..<n {
+            s += args(i): string;
         }
-        select lastRank {
-            when 1 do return y1;
-            when 2 do return y2;
+        try! throw new Error(s);
+    }
+    
+    record Tensor {
+        param rank: int;
+        type eltType = real;
+
+        var _domain: domain(rank,int);
+        var data: [_domain] eltType;
+
+        proc shape do return this._domain.shape;
+
+        proc init(type eltType, shape: int ...?dim) {
+            this.rank = dim ;
+            this.eltType = eltType;
+            var ranges: dim*range;
+            for (size,r) in zip(shape,ranges) do r = 0..#size;
+            this._domain = {(...ranges)};
         }
-        halt("unreachable");
+        proc init(type eltType, shape: int ...?dim) {
+            this.rank = dim ;
+            this.eltType = eltType;
+            var ranges: dim*range;
+            for (size,r) in zip(shape,ranges) do r = 0..#size;
+            this._domain = {(...ranges)};
+        }
+        proc init(shape: int ...?dim) {
+            this.rank = dim ;
+            this.eltType = real;
+            var ranges: dim*range;
+            for (size,r) in zip(shape,ranges) do r = 0..#size;
+            this._domain = {(...ranges)};
+        }
+        proc init(param rank: int, type eltType) {
+            this.rank = rank;
+            this.eltType = eltType;
+            var ranges: rank*range;
+            for r in ranges do r = 0..#0;
+            this._domain = {(...ranges)};
+        }
+        proc init(data: [?d] ?eltType) {
+            this.rank = d.rank;
+            this.eltType = eltType;
+            this._domain = d;
+            this.data = data;
+        }
+        // proc init(shape: int ...?d) {
+        //     this.rank = d;
+        //     this.eltType = real;
+        //     this._domain = {(...shape)};
+        //     this.data = 0.0;
+        // }
+
+        // forwarding data only this;
+
+        
+        proc fmap(fn) {
+            const data = fn(this.data);
+            return new Tensor(data);
+        }
+        
 
     }
-    proc selectAssign(x: Tensor(?), ref y1: Tensor(1), ref y2: Tensor(2)): int {
-        select x.rank {
-            when 1 {
-                y1 = x;
-                return 1;
-            }
-            when 2 {
-                y2 = x;
-                return 2;
-            }
-        }
-    }
-    // proc forwardProp(x: Tensor(?)): Tensor(?) {
-    //     var y = x;
-    //     for l in this.layers {
-    //         y = l.forwardProp(y);
-    //     }
-    //     return y;
-    // }
-}
 
-proc main() {
-    var net = new Network(
-                // new shared Dense(),
-                // new shared MaxPool(),
-                new shared Dense()
-                );
-    // net.forwardProp(new Tensor(real,2));
-    feedForwardRec(new Tensor(real,2),net.layers);
+
+    operator +(lhs: Tensor(?d), rhs: Tensor(d)) {
+        const data = lhs.data + rhs.data;
+        return new Tensor(data);
+    }
+    operator +=(ref lhs: Tensor(?d), const ref rhs: Tensor(d)) {
+        lhs.data += rhs.data;
+    }
+    operator -(lhs: Tensor(?d), rhs: Tensor(d)) {
+        const data = lhs.data - rhs.data;
+        return new Tensor(data);
+    }
+    operator -=(ref lhs: Tensor(?d), const ref rhs: Tensor(d)) {
+        lhs.data -= rhs.data;
+    }
+    operator *(lhs: Tensor(?d), rhs: Tensor(d)) {
+        // Hermitian product, not composition
+        const data = lhs.data * rhs.data;
+        return new Tensor(data);
+    }
+    operator *=(ref lhs: Tensor(?d), const ref rhs: Tensor(d)) {
+        lhs.data *= rhs.data;
+    }
+
+    operator *(lhs: Tensor(2,?eltType), rhs: Tensor(1,eltType)): Tensor(1,eltType) {
+        const (m,n) = lhs.shape;
+        const (p,) = rhs.shape;
+        if n != p then
+            err("Trying to apply a matrix of shape ",lhs.shape, " to a vector of shape ", rhs.shape);
+        const a = lhs.data;
+        const v = rhs.data;
+        var w: [0..#m] eltType;
+        forall i in 0..#m {
+            const row = a[i,..];
+            w[i] = + reduce (row * v);
+        }
+        return new Tensor(w);
+    }
+    operator *(lhs: Tensor(1,?eltType), rhs: Tensor(2,eltType)): Tensor(1,eltType) {
+        const (p,) = lhs.shape;
+        const (m,n) = rhs.shape;
+        if m != 1 then
+            err("Trying to apply a vector of shape ",lhs.shape, " to a matrix of shape ", rhs.shape);
+        
+        const a = lhs.data;
+        const v = rhs.data;
+        var b: [0..#p, 0..#n] eltType;
+        forall (i,j) in b.domain {
+            b[i,j] = v[i] * a[0,j];
+        }
+        return new Tensor(b);
+    }
+
+    proc matToTens(m: la.Matrix(?t)): Tensor(2,t) {
+        return new Tensor(m.underlyingMatrix);
+    }
+    proc vecToTens(v: la.Vector(?t)): Tensor(1,t) {
+        return new Tensor(v.underlyingVector);
+    }
+
+    proc randn(shape: int ...?d): Tensor(d,real) {
+        var t = new Tensor((...shape));
+        var m: [t.data.domain] real;
+        forall i in m.domain {
+            var x: real = la.normal();
+            m[i] = x;
+        }
+        return new Tensor(m);
+    }
+    proc zeros(shape: int ...?d): Tensor(d,real) {
+        return new Tensor((...shape));
+    }
+
+    proc _sigmoid(x: real): real {
+        return 1.0 / (1.0 + Math.exp(-x));
+    }
+
+    proc sigmoid(t: Tensor(?d)): Tensor(d) {
+        return t.fmap(_sigmoid);
+    }
+
 }
 
 
 
 
 /*
+
+// Have domain of 1d arrays as the index type, that indexes the data
+// var dimDom: domain(1,int) = {0..#dim}; // may change
+// var idxDom: domain([dimDom] int);
+// var data: [idxDom] real;
+
 record NDArray {
     type eltType;
     var _shapeDomain: domain(1,int);
