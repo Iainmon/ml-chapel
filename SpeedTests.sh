@@ -22,7 +22,7 @@ echo "[Week6]: (numImages, seconds)"
 for num_images in 10 50 100 200 500 1000 2000 5000 10000 20000
 do
     start=`date +%s`
-    ./speed_tests/week5_classifier --numImages=${num_images} --epochs=1000 > /dev/null
+    ./speed_tests/week6_classifier --numImages=${num_images} --epochs=1000 > /dev/null
     end=`date +%s`
 
     runtime=$((end-start))
