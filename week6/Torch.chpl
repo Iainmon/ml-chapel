@@ -191,12 +191,41 @@ module Torch {
             const newW: int = w / 2;
 
             var output = tn.zeros(newH,newW,numFilters);
-            for (region,i,j) in regions(convs) {
-                forall k in 0..#numFilters with (ref output) {
-                    output[i,j,k] = max reduce region[..,..,k];
+
+            // for (region,i,j) in regions(convs) {
+            //     forall k in 0..#numFilters with (ref output) {
+            //         output[i,j,k] = max reduce region[..,..,k];
+            //     }
+            // }
+
+            forall i in 0..#newH with (ref output) {
+                forall j in 0..#newW with (ref output) {
+                    const region = convs[i*2..#2, j*2..#2, ..];
+                    forall k in 0..#numFilters with (ref output) {
+                        output[i,j,k] = max reduce region[..,..,k];
+                    }
                 }
             }
             return output;
+        }
+
+        proc backward(delta: Tensor(3), convs: Tensor(3)): Tensor(3) {
+            // const (h,w,numFilters) = convs.shape;
+            // const newH: int = h / 2;
+            // const newW: int = w / 2;
+
+            // var output = tn.zeros(h,w,numFilters);
+
+            // forall i in 0..#newH with (ref output) {
+            //     forall j in 0..#newW with (ref output) {
+            //         const region = convs[i*2..#2, j*2..#2, ..];
+            //         forall k in 0..#numFilters with (ref output) {
+            //             const maxIndex = argmax reduce region[..,..,k];
+            //             output[i*2 + maxIndex[0], j*2 + maxIndex[1], k] = delta[i,j,k];
+            //         }
+            //     }
+            // }
+            // return output;
         }
     }
 
@@ -314,11 +343,12 @@ module Torch {
 
         var n2 = new Network(
             (
-                new Conv(3),
-                new MaxPool()
+                new Conv(10),
+                new MaxPool(),
+                new MaxPool(),
             )
         );
-        const image = tn.randn(10,10);
+        const image = tn.randn(20,20);
         writeln(image);
         const convs = n2.forwardProp(image);
         writeln(convs);

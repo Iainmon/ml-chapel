@@ -36,7 +36,9 @@ proc sigmoidM(m: lina.Matrix(real(64))): lina.Matrix(real(64)) {
 
 proc sigmoidPrime(x: real(64)): real(64) {
     const sig = sigmoid(x);
-    return sig * (1.001 - sig);
+    return sig * (1.0 - sig);
+
+    // return sig * (1.001 - sig);
 }
 
 proc sigmoidPrimeM(m: lina.Matrix(real(64))): lina.Matrix(real(64)) {
