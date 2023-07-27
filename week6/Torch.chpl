@@ -172,8 +172,31 @@ module Torch {
 
     record MaxPool {
 
-        proc forwardProp(x: Tensor(2)): Tensor(1) {
-            return new Tensor(real, 0);
+        iter regions(convs: Tensor(3)) {
+            const (h,w,numFilters) = convs.shape;
+            const newH: int = h / 2;
+            const newW: int = w / 2;
+
+            for i in 0..#newH {
+                for j in 0..#newW {
+                    var region = convs[i*2..#2, j*2..#2, ..];
+                    yield (region,i,j);
+                }
+            }
+        }
+
+        proc forwardProp(convs: Tensor(3)): Tensor(3) {
+            const (h,w,numFilters) = convs.shape;
+            const newH: int = h / 2;
+            const newW: int = w / 2;
+
+            var output = tn.zeros(newH,newW,numFilters);
+            for (region,i,j) in regions(convs) {
+                forall k in 0..#numFilters with (ref output) {
+                    output[i,j,k] = max reduce region[..,..,k];
+                }
+            }
+            return output;
         }
     }
 
@@ -292,13 +315,14 @@ module Torch {
         var n2 = new Network(
             (
                 new Conv(3),
+                new MaxPool()
             )
         );
         const image = tn.randn(10,10);
         writeln(image);
         const convs = n2.forwardProp(image);
         writeln(convs);
-        n2.train([(image,convs)],0.5);
+        // n2.train([(image,convs)],0.5);
 
     }
 }
