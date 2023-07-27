@@ -5,7 +5,7 @@ import Torch as torch;
 
 import MNIST;
 
-config const numImages = 1000;
+config const numImages = 10000;
 
 var images = MNIST.loadImages(numImages);
 var (labels,labelVectors) = MNIST.loadLabels(numImages);
@@ -37,16 +37,9 @@ proc main() {
     const learningRate = 0.5;
 
     for i in 0..epochs {
-        const size = trainingData.size;
-        var cost = 0.0;
-        for (im,lb) in trainingData {
-            cost += net.cost(im,lb);
-        }
-        for (im,lb) in trainingData {
-            net.optimize(im,lb,learningRate);
-        }
-        cost = cost / size;
-        writeln("Epoch ",i," cost: ",cost);
+        writeln("Epoch ",i);
+        const cost = net.train(trainingData,learningRate);
+        writeln("Cost: ",cost);
     }
 
 }

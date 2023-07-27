@@ -3,6 +3,7 @@ module Torch {
     
     // import Tensor.Tensor;
     import Tensor as tn;
+    import IO;
 
     use Tensor;
     // import Tensor;
@@ -32,9 +33,9 @@ module Torch {
         }
 
         proc forwardProp(x: Tensor(1)): Tensor(1) {
-            lastInput = x;
+            // lastInput = x;
             const activation = (weights * x) + bias;
-            lastOutput = activation;
+            // lastOutput = activation;
             return activation;
         }
 
@@ -42,6 +43,13 @@ module Torch {
             const newDelta = weights.transpose() * delta;
             biasGrad    = newDelta;
             weightsGrad = newDelta * lastInput.transpose();
+            return newDelta;
+        }
+
+        proc backward(delta: Tensor(1),lastInput: Tensor(1)): Tensor(1) {
+            const newDelta = weights.transpose() * delta;
+            biasGrad    += newDelta;
+            weightsGrad += newDelta * lastInput.transpose();
             return newDelta;
         }
 
@@ -64,9 +72,9 @@ module Torch {
         }
 
         proc forwardProp(x: Tensor(1)): Tensor(1) {
-            lastInput = x;
+            // lastInput = x;
             const activation = tn.sigmoid(x);
-            lastOutput = activation;
+            // lastOutput = activation;
             return activation;
         }
 
@@ -75,6 +83,13 @@ module Torch {
             const grad = delta * sp;
             return grad; 
         }
+
+        proc backward(delta: Tensor(1),lastInput: Tensor(1)): Tensor(1) {
+            const sp = tn.sigmoidPrime(lastInput);
+            const grad = delta * sp;
+            return grad; 
+        }
+
         proc optimize(mag: real) {
             
         }
@@ -107,6 +122,18 @@ module Torch {
         const xNext = layers[n].backward(x);
         return backwardPropHelp(layers, n-1, xNext);
     }
+
+    proc backwardForwardPropHelp(ref layers, param n: int, x: Tensor(?), lastDelta: Tensor(?)) {
+        // if n == layers.size then return lastDelta;
+
+        const lastInput = layers[n].forwardProp(x);
+        if n == layers.size - 1 then
+            return layers[n].backward(lastDelta,x);
+
+        const delta = backwardForwardPropHelp(layers, n+1, lastInput, lastDelta);
+        return layers[n].backward(delta,x);
+    }
+
     record Network {
         var layers;
 
@@ -134,8 +161,35 @@ module Torch {
         proc optimize(x: Tensor(?),y: Tensor(?),mag: real) {
             const z = this.forwardProp(x);
             const delta = z - y;
-            this.backwardProp(delta);
-            this.optimize(mag);
+            backwardForwardPropHelp(this.layers,0,x,delta);
+            // this.optimize(mag);
+        }
+
+        proc train(data, learningRate: real) {
+            var cost = 0.0;
+            forall ((x,y),i) in zip(data,0..) with (ref this, ref cost) {
+                // this.optimize(x,y,learningRate);
+                const z = this.forwardProp(x);
+                const delta = z - y;
+                cost += tn.frobeniusNormPowTwo(delta);
+                backwardForwardPropHelp(this.layers,0,x,delta);
+                if i % (data.size / 100):int == 0 {
+                    // try! IO.stderr.write(">");
+                    write(">");
+                    try! IO.stdout.flush();
+                }
+
+            }
+            // try! IO.stderr.writeln();
+            writeln();
+            cost /= data.size;
+            writeln("Optimizing...");
+            for param i in 0..#(layers.size) {
+                layers[i].optimize(learningRate / data.size);
+            }
+
+            return cost;
+
         }
     }
 
