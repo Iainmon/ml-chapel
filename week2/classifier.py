@@ -36,7 +36,7 @@ net = network.Network([784,200,80, 10])
 
 # train the network
 
-epochs = 100 # 30000
+epochs = 1000 # 30000
 learning_rate = 0.5
 
 for epoch in range(epochs):
