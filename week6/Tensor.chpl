@@ -132,10 +132,15 @@ module Tensor {
                     fw.write("]");
                 }
 
-                if rank > 2 {
-                    if idx[rank - 2] < shape[rank - 2] - 1 && i < data.domain.size - 1 then
-                        fw.writeln(",");
-                }
+                // if rank == 2 {
+                //     if idx[rank - 2] < shape[rank - 2] - 1 && i < data.domain.size - 1 then
+                //         fw.writeln(",");
+                // }
+                // if rank == 3 {
+                //     if i % (shape[1] * shape[2]) + 1 == 0 {
+                //         fw.writeln(",");
+                //     }
+                // }
                 first = false;
             }
             fw.writeln(", shape=",this.shape,")");

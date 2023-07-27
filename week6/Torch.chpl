@@ -97,8 +97,76 @@ module Torch {
 
     record Conv {
 
-        proc forwardProp(x: Tensor(2)): Tensor(2) {
-            return new Tensor(real, 0, 0);
+        var numFilters: int;
+        var filters: Tensor(3);
+        var filtersGrad: Tensor(3);
+
+        proc init(numFilters: int) {
+            this.numFilters = numFilters;
+            this.filters = tn.randn(numFilters,3,3) / 9.0;
+            this.filtersGrad = tn.zeros(numFilters,3,3);
+        }
+
+        iter regions(image: Tensor(2)) {
+            const (h,w) = image.shape;
+            for i in 0..#(h-2) {
+                for j in 0..#(w-2) {
+                    var region = image[i..i+3, j..j+3];
+                    yield (region,i,j);
+                }
+            }
+        }
+
+
+        proc forwardProp(image: Tensor(2)): Tensor(3) {
+            const (h,w) = image.shape;
+
+            var output = tn.zeros(h-2,w-2,numFilters);
+
+            // for (region,i,j) in regions(x) {
+            //     // var filterResults = new Tensor(numFilters,3,3);
+            //     // var filterResults = [i in 0..#numFilters] region * new Tensor(filters[i,..,..]);
+            //     var convSums: [0..#numFilters] real;
+            //     forall k in 0..#numFilters {
+            //         const filter = filters.data[k,..,..];
+            //         const conv = region * filter;
+            //         convSums[k] = + reduce conv;
+            //     }
+            //     output[i,j,..] = convSums;
+            // }
+            forall i in 0..#(h-2) with (ref output) {
+                forall j in 0..#(w-2) with (ref output) {
+                    const region = image[i..#3, j..#3];
+                    forall k in 0..#numFilters with (ref output) {
+                        const filter = filters.data[k,..,..];
+                        const conv = region * filter;
+                        output.data[i,j,k] = + reduce conv;
+                    }
+                }
+            }
+            return output;
+        }
+
+        proc backward(delta: Tensor(3), image: Tensor(2)): Tensor(2) {
+            const (h,w) = image.shape;
+            var output = tn.zeros(h,w);
+
+            forall i in 0..#(h-2) with (ref output) {
+                forall j in 0..#(w-2) with (ref output) {
+                    const region = image[i..#3, j..#3];
+                    forall k in 0..#numFilters with (ref output) {
+                        const filter = filters.data[k,..,..];
+                        const conv = region * filter;
+                        filtersGrad.data[k,..,..] += delta.data[i,j,k] * region;
+                        output.data[i,j] += delta.data[i,j,k] * + reduce conv;
+                    }
+                }
+            }
+            return output;
+        }
+
+        proc optimize(mag: real(64)) {
+            filters -= mag * filtersGrad;
         }
     }
 
@@ -173,7 +241,7 @@ module Torch {
                 const delta = z - y;
                 cost += tn.frobeniusNormPowTwo(delta);
                 backwardForwardPropHelp(this.layers,0,x,delta);
-                if i % (data.size / 100):int == 0 {
+                if i % ((data.size / 100):int + 1) == 0 {
                     // try! IO.stderr.write(">");
                     write(">");
                     try! IO.stdout.flush();
@@ -220,6 +288,17 @@ module Torch {
         // for i in 0..<(3 * 4 * 5) {
         //     writeln(i, " ", tn.nbase(shape,i));
         // }
+
+        var n2 = new Network(
+            (
+                new Conv(3),
+            )
+        );
+        const image = tn.randn(10,10);
+        writeln(image);
+        const convs = n2.forwardProp(image);
+        writeln(convs);
+        n2.train([(image,convs)],0.5);
 
     }
 }
