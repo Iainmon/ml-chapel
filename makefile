@@ -92,6 +92,12 @@ speedtest:
 		; echo "[non-iter] Images: $$n, Execution time: $$((STOP-START))" ; \
 	done
 
+tests: clean
+	chpl $(fast_flag) $(my_lib) -M week5 $(blas_libs) $(output)/week5_classifier tests/week5_classifier.chpl
+	chpl $(fast_flag) $(my_lib) -M week6 $(blas_libs) $(output)/week6_classifier tests/week6_classifier.chpl
+	echo "Build complete."
+
+
 clean: 
 	rm -rf build
 	mkdir build

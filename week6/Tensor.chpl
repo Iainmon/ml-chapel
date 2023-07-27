@@ -200,6 +200,11 @@ module Tensor {
         return new Tensor(b);
     }
 
+    operator /(lhs: Tensor(?d,?eltType), c: eltType) {
+        const data = lhs.data / c;
+        return new Tensor(data);
+    }
+
     proc matToTens(m: la.Matrix(?t)): Tensor(2,t) {
         return new Tensor(m.underlyingMatrix);
     }
