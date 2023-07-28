@@ -10,7 +10,7 @@ echo "[Python]: (numImages, seconds)"
 for num_images in 100 500 1000 2000 5000 10000 15000 20000 25000 30000 35000 40000 45000 50000
 do
     start=`date +%s`
-    # python3 week2/classifier.py ${num_images} &> /dev/null
+    /usr/bin/python3 week2/classifier.py ${num_images} &> /dev/null
     end=`date +%s`
 
     runtime=$((end-start))
