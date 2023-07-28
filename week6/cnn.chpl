@@ -3,7 +3,7 @@ import Tensor as tn;
 use Tensor;
 import Math;
 import MNIST;
-
+import Random;
 
 
 var net = new torch.Network(
@@ -35,19 +35,26 @@ proc train(im: Tensor(2), lb: int, lr: real = 0.005) {
     return (loss,acc);
 }
 
-config const numImages = 200;
+config const numImages = 10000;
 
 var imageData = MNIST.loadImages(numImages);
+imageData -= 0.5;
 var (trainLabels,labelVectors) = MNIST.loadLabels(numImages);
 
-const trainImages = [im in imageData] new Tensor(im);
+var trainImages = [im in imageData] new Tensor(im);
 
+var trainingData = for a in zip(trainImages,trainLabels) do a;
 
 for epoch in 0..3 {
+    
+    writeln("Epoch ",epoch + 1);
+
     var loss = 0.0;
     var numCorrect = 0;
 
-    for (i,im,lb) in zip(0..,trainImages,trainLabels) {
+    Random.shuffle(trainingData);
+
+    for ((im,lb),i) in zip(trainingData,0..) {
         if i > 0 && i % 100 == 99 {
             //  print('[Step %d] Past 100 steps: Average Loss %.3f | Accuracy: %d%%' %(i + 1, loss / 100, num_correct))
             writeln("Step ",i + 1," Loss ",loss / 100," Accuracy ",numCorrect);

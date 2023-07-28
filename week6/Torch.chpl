@@ -360,15 +360,15 @@ module Torch {
 
             const dL_dZ: Tensor(1) = dL_dOut[i] * dOut_dZ;
 
-            const dL_dW: Tensor(2) = dZ_dW * dL_dZ.transpose();
+            const dL_dW: Tensor(2) = dL_dZ * dZ_dW.transpose(); // This should be dL_dW * dL_dZ.transpose();
             const dL_dB: Tensor(1) = dL_dZ * dZ_dB;
             const dL_dIn: Tensor(1) = dZ_dIn.transpose() * dL_dZ; // this is the problem
 
-            writeln("weights: ", weights.shape);
-            writeln("dL_dW: ", dL_dW.shape);
-            weightsGrad += dL_dW;
-            writeln("biases: ", biases.shape);
-            writeln("dL_dIn: ", dL_dIn.shape);
+            // writeln("weights: ", weights.shape);
+            // writeln("dL_dW: ", dL_dW.shape);
+            weightsGrad += dL_dW; // this might need to be dL_dW.transpose(), along with line 363 alternative
+            // writeln("biases: ", biases.shape);
+            // writeln("dL_dIn: ", dL_dIn.shape);
             biasesGrad += dL_dB;
 
             return dL_dIn.reshape((...convs.shape));
