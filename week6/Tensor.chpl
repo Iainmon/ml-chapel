@@ -4,6 +4,7 @@ module Tensor {
     import Math;
     import IO;
     import IO.FormattedIO;
+    import ChapelArray;
 
 
     proc err(args...?n) {
@@ -12,6 +13,12 @@ module Tensor {
             s += args(i): string;
         }
         try! throw new Error(s);
+    }
+
+    proc domainFromShape(shape: int ...?d): domain(d,int) {
+        var ranges: d*range;
+        for (size,r) in zip(shape,ranges) do r = 0..#size;
+        return {(...ranges)};
     }
 
     proc nbase(bounds: ?rank*int, n: int): rank*int {
@@ -104,6 +111,21 @@ module Tensor {
             return new Tensor(M);
         }
 
+        proc flatten() {
+            const size = this.data.domain.size;
+            const flatD = {0..#size};
+            // const v = ChapelArray.reshape(this.data,flatD);
+            const v = for (i,a) in zip(flatD,this.data) do a;
+            return new Tensor(v);
+        }
+
+        proc reshape(shape: int ...?d) {
+            const dom = domainFromShape((...shape));
+            // const data = ChapelArray.reshape(this.data,dom);
+            const data = for (i,a) in zip(dom,this.data) do a;
+            return new Tensor(data);
+        }
+
         
         proc fmap(fn) {
             const data = fn(this.data);
@@ -165,6 +187,10 @@ module Tensor {
         lhs.data -= rhs.data;
     }
     operator *(c: ?eltType, rhs: Tensor(?d,eltType)) {
+        const data = c * rhs.data;
+        return new Tensor(data);
+    }
+    operator *(rhs: Tensor(?d,?eltType), c: eltType) {
         const data = c * rhs.data;
         return new Tensor(data);
     }
@@ -250,6 +276,24 @@ module Tensor {
         return + reduce AA;
     }
 
+    proc exp(t: Tensor(?d)): Tensor(d) {
+        var data: [t.data.domain] real;
+        forall i in data.domain do
+            data[i] = Math.exp(t.data[i]);
+        return new Tensor(data);
+    }
+
+    proc argmax(A: [?d] real) where d.rank == 1 {
+        var max: real = A[0];
+        var am: int = 0;
+        for i in A.domain {
+            if A[i] > max {
+                max = A[i];
+                am = i;
+            }
+        }
+        return am;
+    }
 
 }
 

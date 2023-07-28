@@ -33,6 +33,11 @@ torchClassifier: clean
 	echo "Build complete."
 	./build/torchClassifier
 
+cnn: clean
+	chpl $(fast_flag) $(my_lib) $(blas_libs)  $(output)/cnn week6/cnn.chpl
+	echo "Build complete."
+	./build/cnn
+
 
 tensor: clean
 	chpl $(fast_flag) $(my_lib) $(blas_libs)  $(output)/Tensor week6/Tensor.chpl

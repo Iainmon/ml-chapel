@@ -57,6 +57,10 @@ module Torch {
             bias -= mag * biasGrad;
             weights -= mag * weightsGrad;
         }
+        proc resetGradients() {
+            biasGrad.data = 0;
+            weightsGrad.data = 0;
+        }
     }
 
     record Sigmoid {
@@ -195,6 +199,9 @@ module Torch {
         proc optimize(mag: real(64)) {
             filters -= mag * filtersGrad;
         }
+        proc resetGradients() {
+            filtersGrad.data = 0;
+        }
     }
 
     record MaxPool {
@@ -300,6 +307,93 @@ module Torch {
         }
 
         proc optimize(mag: real(64)) { }
+        proc resetGradients() { }
+    }
+
+    record SoftMax {
+
+        var weights: Tensor(2);
+        var biases: Tensor(1);
+
+        var weightsGrad: Tensor(2);
+        var biasesGrad: Tensor(1);
+
+        proc init(inputLength: int, nodes: int) {
+            weights = tn.randn(nodes,inputLength) / inputLength;
+            biases = tn.zeros(nodes);
+
+            weightsGrad = tn.zeros(nodes,inputLength);
+            biasesGrad = tn.zeros(nodes);
+        }
+
+        proc forwardProp(convs: Tensor(3)): Tensor(1) {
+            const flattened = convs.flatten();
+            const z = (weights * flattened) + biases;
+            const exp = tn.exp(z);
+            const expSum = + reduce exp.data;
+            return exp / expSum;
+        }
+
+        proc backward(delta: Tensor(1), convs: Tensor(3)): Tensor(3) {
+            const flattened = convs.flatten();
+            const Z = (weights * flattened) + biases;
+            const exp = tn.exp(Z);
+            const expSum = + reduce exp.data;
+            const softmax = exp / expSum;
+            const dL_dOut = delta;
+
+
+            var nonZeroIdx: int = -1;
+            for i in delta.data.domain do
+                if delta[i] != 0 { nonZeroIdx = i; break; }
+            
+            if nonZeroIdx == -1 then tn.err("Softmax backward: delta is zero vector");
+            const i = nonZeroIdx;
+
+            var dOut_dZ: Tensor(1) = (- exp[i]) * (exp / (expSum ** 2.0));
+            dOut_dZ[i] = exp[i] * (expSum - exp[i]) / (expSum ** 2.0);
+            
+
+            const dZ_dW: Tensor(1) = flattened;
+            const dZ_dB: real = 1;
+            const dZ_dIn: Tensor(2) = weights;
+
+            const dL_dZ: Tensor(1) = dL_dOut[i] * dOut_dZ;
+
+            const dL_dW: Tensor(2) = dZ_dW * dL_dZ.transpose();
+            const dL_dB: Tensor(1) = dL_dZ * dZ_dB;
+            const dL_dIn: Tensor(1) = dZ_dIn.transpose() * dL_dZ; // this is the problem
+
+            writeln("weights: ", weights.shape);
+            writeln("dL_dW: ", dL_dW.shape);
+            weightsGrad += dL_dW;
+            writeln("biases: ", biases.shape);
+            writeln("dL_dIn: ", dL_dIn.shape);
+            biasesGrad += dL_dB;
+
+            return dL_dIn.reshape((...convs.shape));
+
+
+
+            // const (m,n) = weights.shape;
+            // const grad: [0..#m, 0..#n] real;
+
+            // forall i in grad.domain {
+            //     grad[i,j] = delta[j] * softmax[i];
+            // }
+
+            // return grad.reshape(convs.shape);
+        }
+
+        proc optimize(mag: real(64)) {
+            weights -= mag * weightsGrad;
+            biases -= mag * biasesGrad;
+        }
+        proc resetGradients() {
+            weightsGrad.data = 0;
+            biasesGrad.data = 0;
+        }
+
     }
 
     proc forwardPropHelp(ref layers, param n: int, x: Tensor(?)) {
@@ -340,9 +434,17 @@ module Torch {
         proc backwardProp(x: Tensor(?)) {
             return backwardPropHelp(this.layers,this.layers.size - 1,x);
         }
+        proc backwardProp(x: Tensor(?), delta: Tensor(?)) {
+            return backwardForwardPropHelp(this.layers,0,x,delta);
+        }
         proc optimize(mag: real) {
             for param i in 0..#(layers.size) {
                 layers[i].optimize(mag);
+            }
+        }
+        proc resetGradients() {
+            for param i in 0..#(layers.size) {
+                layers[i].resetGradients();
             }
         }
 
@@ -357,6 +459,8 @@ module Torch {
             backwardForwardPropHelp(this.layers,0,x,delta);
             // this.optimize(mag);
         }
+
+
 
         proc train(data, learningRate: real) {
             var cost = 0.0;
@@ -382,8 +486,9 @@ module Torch {
             }
 
             return cost;
-
         }
+
+
     }
 
     proc main() {
