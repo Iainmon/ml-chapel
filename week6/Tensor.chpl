@@ -86,6 +86,7 @@ module Tensor {
         // }
 
         forwarding data only this;
+        // forwarding data only domain;
 
 
         proc transpose() where rank == 1 {

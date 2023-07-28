@@ -121,19 +121,22 @@ module Torch {
         proc forwardProp(image: Tensor(2)): Tensor(3) {
             const (h,w) = image.shape;
 
-            var output = tn.zeros(h-2,w-2,numFilters);
+            // Python analog (slow)
+            /* var output = tn.zeros(h-2,w-2,numFilters);
+            for (region,i,j) in regions(x) {
+                // var filterResults = new Tensor(numFilters,3,3);
+                // var filterResults = [i in 0..#numFilters] region * new Tensor(filters[i,..,..]);
+                var convSums: [0..#numFilters] real;
+                forall k in 0..#numFilters {
+                    const filter = filters.data[k,..,..];
+                    const conv = region * filter;
+                    convSums[k] = + reduce conv;
+                }
+                output[i,j,..] = convSums;
+            }*/
 
-            // for (region,i,j) in regions(x) {
-            //     // var filterResults = new Tensor(numFilters,3,3);
-            //     // var filterResults = [i in 0..#numFilters] region * new Tensor(filters[i,..,..]);
-            //     var convSums: [0..#numFilters] real;
-            //     forall k in 0..#numFilters {
-            //         const filter = filters.data[k,..,..];
-            //         const conv = region * filter;
-            //         convSums[k] = + reduce conv;
-            //     }
-            //     output[i,j,..] = convSums;
-            // }
+            // Using tensor type (faster?)
+            /*var output = tn.zeros(h-2,w-2,numFilters);
             forall i in 0..#(h-2) with (ref output) {
                 forall j in 0..#(w-2) with (ref output) {
                     const region = image[i..#3, j..#3];
@@ -143,14 +146,26 @@ module Torch {
                         output.data[i,j,k] = + reduce conv;
                     }
                 }
+            }*/
+
+            // Using arrays (optimal)
+            var convs: [0..#(h-2), 0..#(w-2), 0..#numFilters] real;
+            forall (i,j,k) in convs.domain {
+                const region = image[i..#3, j..#3];
+                const filter = filters.data[k,..,..];
+                const conv = region * filter;
+                convs[i,j,k] = + reduce conv;
             }
+            const output = new Tensor(convs);
+
             return output;
         }
 
         proc backward(delta: Tensor(3), image: Tensor(2)): Tensor(2) {
             const (h,w) = image.shape;
-            var output = tn.zeros(h,w);
 
+            // Using tensor type (faster?)
+            /* var output = tn.zeros(h,w);
             forall i in 0..#(h-2) with (ref output) {
                 forall j in 0..#(w-2) with (ref output) {
                     const region = image[i..#3, j..#3];
@@ -161,7 +176,19 @@ module Torch {
                         output.data[i,j] += delta.data[i,j,k] * + reduce conv;
                     }
                 }
+            }*/
+            
+            // Using arrays (optimal)
+            var grad: [0..#h, 0..#w] real;
+            forall (i,j,k) in delta.data.domain with (ref this) {
+                const region = image[i..#3, j..#3];
+                const filter = filters[k,..,..];
+                const conv = region * filter;
+                filtersGrad[k,..,..] += delta[i,j,k] * region;
+                grad[i,j] += delta[i,j,k] * + reduce conv;
             }
+            const output = new Tensor(grad);
+
             return output;
         }
 
@@ -190,14 +217,16 @@ module Torch {
             const newH: int = h / 2;
             const newW: int = w / 2;
 
-            var output = tn.zeros(newH,newW,numFilters);
+            // Python analog (slow)
+            /*var output = tn.zeros(newH,newW,numFilters);
+            for (region,i,j) in regions(convs) {
+                forall k in 0..#numFilters with (ref output) {
+                    output[i,j,k] = max reduce region[..,..,k];
+                }
+            }*/
 
-            // for (region,i,j) in regions(convs) {
-            //     forall k in 0..#numFilters with (ref output) {
-            //         output[i,j,k] = max reduce region[..,..,k];
-            //     }
-            // }
-
+            // Using tensor type (faster?)
+            /*var output = tn.zeros(newH,newW,numFilters);
             forall i in 0..#newH with (ref output) {
                 forall j in 0..#newW with (ref output) {
                     const region = convs[i*2..#2, j*2..#2, ..];
@@ -205,14 +234,55 @@ module Torch {
                         output[i,j,k] = max reduce region[..,..,k];
                     }
                 }
+            }*/
+
+            // Using arrays (optimal)
+            var pools: [0..#newH, 0..#newW, 0..#numFilters] real;
+            forall (i,j,k) in pools.domain {
+                const region = convs[i*2..#2, j*2..#2, ..];
+                pools[i,j,k] = max reduce region[..,..,k];
             }
+            const output = new Tensor(pools);
+
             return output;
         }
 
+        proc argmax(m: [?d] real) where d.rank == 2 {
+            var max: real = m[d.first];
+            var maxIndex: 2*int = d.first;
+            for (i,j) in m.domain {
+                if m[i,j] > max {
+                    max = m[i,j];
+                    maxIndex = (i,j);
+                }
+            }
+            return maxIndex - d.first;
+        }
+
         proc backward(delta: Tensor(3), convs: Tensor(3)): Tensor(3) {
-            // const (h,w,numFilters) = convs.shape;
-            // const newH: int = h / 2;
-            // const newW: int = w / 2;
+            const (h,w,numFilters) = convs.shape;
+
+            const newH: int = h / 2;
+            const newW: int = w / 2;
+
+            var grad: [0..#h, 0..#w, 0..#numFilters] real;
+            forall (i,j,k) in delta.data.domain {
+                const region = convs[i*2..#2, j*2..#2, k];
+                const (maxI,maxJ) = argmax(region);
+                grad[i*2+maxI,j*2+maxJ,k] = delta[i,j,k];
+
+
+                // const region = convs[i*2..#2, j*2..#2, ..];
+                // const maxes = [k_ in 0..#numFilters] max reduce region[..,..,k_];
+                // const max = max reduce region [..,..,k];
+
+                // for (i2,j2,k2) in region.domain {
+                //     if region[i2,j2,k2] == maxes[k] then {
+                //         grad[i*2+i2,j*2+j2,k2] = delta[i,j,k];
+                //     }
+                // }
+            }
+            const output = new Tensor(grad);
 
             // var output = tn.zeros(h,w,numFilters);
 
@@ -225,8 +295,11 @@ module Torch {
             //         }
             //     }
             // }
-            // return output;
+
+            return output;
         }
+
+        proc optimize(mag: real(64)) { }
     }
 
     proc forwardPropHelp(ref layers, param n: int, x: Tensor(?)) {
@@ -352,7 +425,9 @@ module Torch {
         writeln(image);
         const convs = n2.forwardProp(image);
         writeln(convs);
-        // n2.train([(image,convs)],0.5);
+        // var reversedImage = n2.backwardProp(convs);
+        // writeln(reversedImage);
+        n2.train([(image,convs)],0.5);
 
     }
 }
