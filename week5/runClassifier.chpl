@@ -3,11 +3,11 @@ import Chai as chai;
 import IO;
 import MNIST;
 
-config const modelFile = "/Users/iainmoncrief/Documents/Sandbox/models/mnist.classifier.model";
+config const modelFile = "/Users/iainmoncrief/Documents/Sandbox/models/mnist.normalized.classifier.model";
 
 config const testFile = "/Users/iainmoncrief/Documents/Processing/sketch_230720a/digit.txt"; // "digit.txt";
 
-config const normalize = false;
+config const normalize = true;
 
 proc loadImageBitmap(fn: string): [0..#28,0..#28] real {
     var file = IO.open(fn, IO.ioMode.r);
