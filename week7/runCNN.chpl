@@ -34,9 +34,9 @@ proc loadImageBitmap(fn: string): [0..#28,0..#28] real {
 
 var net = new torch.Network(
     (
-        new torch.Conv(8),
+        new torch.Conv(16),
         new torch.MaxPool(),
-        new torch.SoftMax(13 * 13 * 8,10)
+        new torch.SoftMax(13 * 13 * 16,10)
     )
 );
 
