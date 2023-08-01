@@ -110,6 +110,12 @@ module Tensor {
             }
             return new Tensor(M);
         }
+        proc normalize() {
+            const norm = sqrt(frobeniusNormPowTwo(this));
+            const data = this.data / norm;
+            return new Tensor(data);
+
+        }
 
         proc flatten() {
             const size = this.data.domain.size;

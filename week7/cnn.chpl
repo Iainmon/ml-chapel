@@ -4,7 +4,7 @@ use Tensor;
 import Math;
 import MNIST;
 import Random;
-
+import IO;
 
 var net = new torch.Network(
     (
@@ -15,7 +15,7 @@ var net = new torch.Network(
 );
 
 // net.save("mnist.cnn.model");
-// net.load("epoch_3_mnist.cnn.model");
+// net.load("models/cnn/epoch_0_mnist.cnn.model");
 
 proc forward(x: Tensor(?), lb: int) {
     const output = net.forwardProp(x);
@@ -38,6 +38,32 @@ proc train(im: Tensor(2), lb: int, lr: real = 0.005) {
     return (loss,acc);
 }
 
+proc train(data: [] (Tensor(2),int), lr: real = 0.005) {
+    // writeln("Training on ",data.domain.size," images");
+    const size = data.domain.size;
+
+    var loss = 0.0;
+    var acc = 0;
+
+    net.resetGradients();
+    forall ((im,lb),i) in zip(data,0..) with (ref net,+ reduce loss, + reduce acc) {
+        const (output,l,a) = forward(im,lb);
+        var gradient = tn.zeros(10);
+        gradient[lb] = -1.0 / output[lb];
+        
+        net.backwardProp(im,gradient);
+
+        loss += l;
+        acc += if a then 1 else 0;
+    }
+
+    net.optimize(lr);
+
+    return (loss,acc);
+}
+
+
+
 config const numImages = 1000;
 
 var imageData = MNIST.loadImages(numImages);
@@ -48,26 +74,48 @@ var trainImages = [im in imageData] new Tensor(im);
 
 var trainingData = for a in zip(trainImages,trainLabels) do a;
 
-for epoch in 0..3 {
+for epoch in 0..8 {
     
     writeln("Epoch ",epoch + 1);
+
+
+    Random.shuffle(trainingData);
+
+    // var loss = 0.0;
+    // var numCorrect = 0;
+    // for ((im,lb),i) in zip(trainingData,0..) {
+    //     if i > 0 && i % 100 == 99 {
+    //         //  print('[Step %d] Past 100 steps: Average Loss %.3f | Accuracy: %d%%' %(i + 1, loss / 100, num_correct))
+    //         writeln("Step ",i + 1," Loss ",loss / 100," Accuracy ",numCorrect);
+    //         loss = 0.0;
+    //         numCorrect = 0;
+    //     }
+    //     const (l,a) = train(im,lb);
+    //     loss += l;
+    //     numCorrect += a;
+    // }
+
+    const batchSize = 10;
+    for i in 0..#(trainingData.size / batchSize) {
+        const batchRange = (i * batchSize)..#batchSize;
+        const batch = trainingData[batchRange];
+        const (loss,acc) = train(batch);
+        writeln("[",i + 1," of ", trainingData.size / batchSize, "] Loss ", loss / batchSize," Accuracy ", acc);
+    }
+
+    writeln("Evaluating...");
 
     var loss = 0.0;
     var numCorrect = 0;
 
-    Random.shuffle(trainingData);
-
-    for ((im,lb),i) in zip(trainingData,0..) {
-        if i > 0 && i % 100 == 99 {
-            //  print('[Step %d] Past 100 steps: Average Loss %.3f | Accuracy: %d%%' %(i + 1, loss / 100, num_correct))
-            writeln("Step ",i + 1," Loss ",loss / 100," Accuracy ",numCorrect);
-            loss = 0.0;
-            numCorrect = 0;
-        }
-        const (l,a) = train(im,lb);
+    forall (im,lb) in trainingData with (+ reduce loss, + reduce numCorrect) {
+        const (o,l,a) = forward(im,lb);
         loss += l;
         numCorrect += a;
     }
-    // net.save("epoch_"+ epoch:string +"_mnist.cnn.model");
+
+    writeln("End of epoch ", epoch + 1, " Loss ", loss / trainingData.size, " Accuracy ", numCorrect, " / ", trainingData.size);
+
+    net.save("models/cnn/epoch_"+ epoch:string +"_mnist.cnn.model");
     
 }

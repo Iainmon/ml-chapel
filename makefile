@@ -38,6 +38,11 @@ cnn: clean
 	echo "Build complete."
 	./build/cnn
 
+runCNN: clean
+	chpl $(fast_flag) $(my_lib) $(blas_libs)  $(output)/runCNN week7/runCNN.chpl
+	echo "Build complete."
+	./build/runCNN
+
 
 tensor: clean
 	chpl $(fast_flag) $(my_lib) $(blas_libs)  $(output)/Tensor week7/Tensor.chpl
