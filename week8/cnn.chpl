@@ -5,15 +5,55 @@ import Math;
 import MNIST;
 import Random;
 import IO;
+import BinaryIO;
+
+// var net = new torch.Network(
+//     (
+//         new torch.Conv(1,20,3),
+//         new torch.MaxPool(),
+//         // new torch.SoftMax(13 * 13 * 8,10)
+//         new torch.Conv(20,10,3),
+//         new torch.MaxPool(),
+//         new torch.SoftMax(5 * 5 * 10,10)
+//     )
+// );
+
+// var net = new torch.Network(
+//     (
+//         new torch.Conv(1,6,5),   // 24
+//         new torch.MaxPool(),     // 12
+//         new torch.Conv(6,16,5),  // 8
+//         new torch.MaxPool(),     // 4
+//         new torch.SoftMax(4 * 4 * 16,10)
+//     )
+// );
+
+
+// This works
+// var net = new torch.Network(
+//     (
+//         new torch.Conv(1,8,3),
+//         new torch.MaxPool(),
+//         new torch.SoftMax(13 * 13 * 8,10)
+//     )
+// );
+
+// var net = new torch.Network(
+//     (
+//         new torch.Conv(1,8,3),
+//         new torch.MaxPool(),
+//         new torch.Conv(8,8,3),
+//         new torch.MaxPool(),
+//         new torch.SoftMax(5 * 5 * 8,10)
+//     )
+// );
 
 var net = new torch.Network(
     (
-        new torch.Conv(1,20,3),
-        new torch.MaxPool(),
-        // new torch.SoftMax(13 * 13 * 8,10)
-        new torch.Conv(20,10,3),
-        new torch.MaxPool(),
-        new torch.SoftMax(5 * 5 * 10,10)
+        new torch.Conv(1,8,7),
+        new torch.Conv(8,12,5),
+        new torch.Conv(12,16,3),
+        new torch.SoftMax(16 * 16 * 16,10)
     )
 );
 
@@ -67,7 +107,7 @@ proc train(data: [] (Tensor(3),int), lr: real = 0.005) {
 
 
 
-config const numImages = 10000;
+config const numImages = 500;
 
 var imageData = MNIST.loadImages(numImages);
 imageData -= 0.5;
@@ -77,12 +117,15 @@ var trainImages = [im in imageData] (new Tensor(im)).reshape(28,28,1);
 
 var trainingData = for a in zip(trainImages,trainLabels) do a;
 
-for epoch in 0..8 {
+for epoch in 0..12 {
     
     writeln("Epoch ",epoch + 1);
 
 
     Random.shuffle(trainingData);
+
+    debugFilters();
+
 
     // var loss = 0.0;
     // var numCorrect = 0;
@@ -98,7 +141,7 @@ for epoch in 0..8 {
     //     numCorrect += a;
     // }
 
-    const batchSize = 5;
+    const batchSize = 1;
     for i in 0..#(trainingData.size / batchSize) {
         const batchRange = (i * batchSize)..#batchSize;
         const batch = trainingData[batchRange];
@@ -119,6 +162,26 @@ for epoch in 0..8 {
 
     writeln("End of epoch ", epoch + 1, " Loss ", loss / trainingData.size, " Accuracy ", numCorrect, " / ", trainingData.size);
 
-    net.save("models/cnn/epoch_"+ epoch:string +"_mnist.cnn.model");
+    // net.save("models/cnn/epoch_"+ epoch:string +"_mnist.cnn.model");
     
+}
+
+
+proc debugFilters() {
+    var file = IO.open("week8/filters/filter.bin", IO.ioMode.cw);
+    var serializer = new BinaryIO.BinarySerializer(IO.ioendian.little);
+    var fw = file.writer(serializer=serializer);
+    // for i in 0..#8 {
+        // const fltr = net.layers[0].filters[i,..,..,0];
+        // const filter = new Tensor(fltr);
+        // filter.write(fw);
+        // writeln("Filter: ",filter);
+    // }
+    net.layers[0].filters.write(fw);
+    net.layers[1].filters.write(fw);
+    net.layers[2].filters.write(fw);
+
+    fw.close();
+    file.close();
+
 }

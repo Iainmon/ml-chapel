@@ -323,6 +323,54 @@ module Tensor {
         return am;
     }
 
+    proc convolve(kernel: [?dk] ?eltType, X: [?dx] eltType) where dx.rank == 2 && dk.rank == 2 {
+        const (h,w) = X.shape;
+        const (kh,kw) = kernel.shape;
+        const newH = h - (kh - 1);
+        const newW = w - (kw - 1);
+        var Y: [0..#newH,0..#newW] eltType;
+        forall (i,j) in Y.domain {
+            const region = X[i..#kh, j..#kw];
+            Y[i,j] = + reduce (region * kernel);
+        }
+        return Y;
+    }
+
+    proc convolve(kernel: Tensor(2), X: Tensor(2)): Tensor(2) {
+        return new Tensor(convolve(kernel.data,X.data));
+    }
+
+    proc rotate180(kernel: [?d] ?eltType) where d.rank == 2 {
+        const (kh,kw) = kernel.shape;
+        var ker: [0..#kh,0..#kw] eltType;
+        forall (i,j) in ker.domain {
+            ker[i,j] = kernel[kh - i - 1, kw - j - 1];
+        }
+        return ker;
+    }
+
+    proc rotate180(kernel: Tensor(2)): Tensor(2) {
+        return new Tensor(rotate180(kernel.data));
+    }
+
+    proc fullConvolve(kernel: [?dk] ?eltType, X: [?dx] eltType) where dx.rank == 2 && dk.rank == 2 {
+        const (h,w) = X.shape;
+        const (kh,kw) = kernel.shape;
+        const (paddingH,paddingW) = (kh - 1,kw - 1);
+        const newH = h + 2 * paddingH;
+        const newW = w + 2 * paddingW;
+        var Y: [0..#newH,0..#newW] eltType;
+        Y = 0.0;
+        Y[paddingH..#h, paddingW..#w] = X;
+        return convolve(kernel,Y);
+    }
+
+    proc fullConvolve(kernel: Tensor(2), X: Tensor(2)): Tensor(2) {
+        return new Tensor(fullConvolve(kernel.data,X.data));
+    }
+
+
+
 }
 
 

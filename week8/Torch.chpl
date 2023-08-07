@@ -147,12 +147,35 @@ module Torch {
 
             if channels != inChannels then tn.err("Conv backward: inChannels mismatch");
 
-            // forall c in 0..#outChannels {
-            //     const dL_dO = delta[..,..,c];
-            //     const X = images[..,..,c];
 
-            // }
+            // Calculate filter gradients
+            forall fo in 0..#outChannels {
+                const dL_dO = delta[..,..,fo];
+                forall fi in 0..#inChannels {
+                    const X = images[..,..,fi];
+                    const dL_dF = tn.convolve(dL_dO, X);
+                    filtersGrad.data[fo,..,..,fi] += dL_dF;
+                }
+            }
 
+            // Calculate input gradients
+            var grad: [0..#h, 0..#w, 0..#inChannels] real;
+            forall fo in 0..#outChannels {
+                const dL_dO = delta[..,..,fo];
+                forall fi in 0..#inChannels {
+                    const F = filters.data[fo,..,..,fi];
+                    const F_rotated = tn.rotate180(F);
+                    const dL_dX = tn.fullConvolve(dL_dO, F_rotated);
+                    grad[..,..,fi] += dL_dX;
+                    // const dL_dX = tn.convolve(dL_dO, F.transpose());
+                    // images[..,..,fi] += dL_dX;
+                    
+                }
+            }
+            return new Tensor(grad);
+
+
+/*
             
             const newH = h - (kh - 1);
             const newW = w - (kw - 1);
@@ -169,6 +192,7 @@ module Torch {
             }
             const output = new Tensor(grad);
             return output;
+*/
         }
 
         proc forwardProp_(image: Tensor(2)): Tensor(3) {
