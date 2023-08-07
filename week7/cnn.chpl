@@ -8,9 +8,12 @@ import IO;
 
 var net = new torch.Network(
     (
-        new torch.Conv(16),
+        new torch.Conv(1,20,3),
         new torch.MaxPool(),
-        new torch.SoftMax(13 * 13 * 16,10)
+        // new torch.SoftMax(13 * 13 * 8,10)
+        new torch.Conv(20,10,3),
+        new torch.MaxPool(),
+        new torch.SoftMax(5 * 5 * 10,10)
     )
 );
 
@@ -26,7 +29,7 @@ proc forward(x: Tensor(?), lb: int) {
     return (output,loss,acc);
 }
 
-proc train(im: Tensor(2), lb: int, lr: real = 0.005) {
+proc train(im: Tensor(?), lb: int, lr: real = 0.005) {
     const (output,loss,acc) = forward(im,lb);
     var gradient = tn.zeros(10);
     gradient[lb] = -1.0 / output[lb];
@@ -38,7 +41,7 @@ proc train(im: Tensor(2), lb: int, lr: real = 0.005) {
     return (loss,acc);
 }
 
-proc train(data: [] (Tensor(2),int), lr: real = 0.005) {
+proc train(data: [] (Tensor(3),int), lr: real = 0.005) {
     // writeln("Training on ",data.domain.size," images");
     const size = data.domain.size;
 
@@ -70,7 +73,7 @@ var imageData = MNIST.loadImages(numImages);
 imageData -= 0.5;
 var (trainLabels,labelVectors) = MNIST.loadLabels(numImages);
 
-var trainImages = [im in imageData] new Tensor(im);
+var trainImages = [im in imageData] (new Tensor(im)).reshape(28,28,1);
 
 var trainingData = for a in zip(trainImages,trainLabels) do a;
 
@@ -95,12 +98,12 @@ for epoch in 0..8 {
     //     numCorrect += a;
     // }
 
-    const batchSize = 10;
+    const batchSize = 5;
     for i in 0..#(trainingData.size / batchSize) {
         const batchRange = (i * batchSize)..#batchSize;
         const batch = trainingData[batchRange];
         const (loss,acc) = train(batch);
-        writeln("[",i + 1," of ", trainingData.size / batchSize, "] Loss ", loss / batchSize," Accuracy ", acc);
+        writeln("[",i + 1," of ", trainingData.size / batchSize, "] Loss ", loss / batchSize," Accuracy ", acc ," / ", batchSize);
     }
 
     writeln("Evaluating...");

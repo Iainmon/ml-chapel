@@ -99,13 +99,14 @@ module Torch {
     record Conv {
 
         var numFilters: int;
-        var filters: Tensor(3);
-        var filtersGrad: Tensor(3);
+        var filters: Tensor(4);
+        var filtersGrad: Tensor(4);
 
-        proc init(numFilters: int) {
+        proc init(inChannels: int,outChannels: int, kernelSize: int = 3) {
+            const numFilters = outChannels;
             this.numFilters = numFilters;
-            this.filters = tn.randn(numFilters,3,3) / 9.0;
-            this.filtersGrad = tn.zeros(numFilters,3,3);
+            this.filters = tn.randn(numFilters,kernelSize,kernelSize,inChannels) / (kernelSize:real ** 2.0);
+            this.filtersGrad = tn.zeros(numFilters,kernelSize,kernelSize,inChannels);
         }
 
         iter regions(image: Tensor(2)) {
@@ -118,7 +119,59 @@ module Torch {
             }
         }
 
-        proc forwardProp(image: Tensor(2)): Tensor(3) {
+        proc forwardProp(images: Tensor(3)): Tensor(3) {
+            const (h,w,channels) = images.shape;
+            const (outChannels,kw,kh,inChannels) = filters.shape;
+
+            if channels != inChannels then tn.err("Conv forwardProp: inChannels mismatch");
+            
+            const newH = h - (kh - 1);
+            const newW = w - (kw - 1);
+
+            var convs: [0..#newH, 0..#newW, 0..#outChannels] real;
+            forall (i,j,k) in convs.domain {
+                forall c in 0..#inChannels {
+                    const region = images[i..#3, j..#3,c];
+                    const filter = filters.data[k,..,..,c];
+                    const conv = region * filter;
+                    convs[i,j,k] += + reduce conv;
+                }
+            }
+            const output = new Tensor(convs);
+            return output;
+        }
+
+        proc backward(delta: Tensor(3), images: Tensor(3)): Tensor(3) {
+            const (h,w,channels) = images.shape;
+            const (outChannels,kw,kh,inChannels) = filters.shape;
+
+            if channels != inChannels then tn.err("Conv backward: inChannels mismatch");
+
+            // forall c in 0..#outChannels {
+            //     const dL_dO = delta[..,..,c];
+            //     const X = images[..,..,c];
+
+            // }
+
+            
+            const newH = h - (kh - 1);
+            const newW = w - (kw - 1);
+
+            var grad: [0..#h, 0..#w, 0..#channels] real;
+            forall (i,j,k) in delta.data.domain {
+                forall c in 0..#inChannels {
+                    const region = images[i..#3, j..#3,c];
+                    const filter = filters.data[k,..,..,c];
+                    const conv = region * filter;
+                    filtersGrad.data[k,..,..,c] += delta[i,j,k] * region;
+                    grad[i,j,c] += delta[i,j,k] * + reduce conv;
+                }
+            }
+            const output = new Tensor(grad);
+            return output;
+        }
+
+        proc forwardProp_(image: Tensor(2)): Tensor(3) {
             const (h,w) = image.shape;
 
             // Python analog (slow)
@@ -161,7 +214,7 @@ module Torch {
             return output;
         }
 
-        proc backward(delta: Tensor(3), image: Tensor(2)): Tensor(2) {
+        proc backward_(delta: Tensor(3), image: Tensor(2)): Tensor(2) {
             const (h,w) = image.shape;
 
             // Using tensor type (faster?)
@@ -539,27 +592,27 @@ module Torch {
     }
 
     proc main() {
-        var n = new Network(
-            (
-                new Dense(3,3),
-                new Sigmoid(3),
-                new Dense(3,6),
-                new Sigmoid(6)
-            )
-        );
+        // var n = new Network(
+        //     (
+        //         new Dense(3,3),
+        //         new Sigmoid(3),
+        //         new Dense(3,6),
+        //         new Sigmoid(6)
+        //     )
+        // );
 
-        const inv: [0..#3] real = [1,2,3];
-        const input = new Tensor(inv);
+        // const inv: [0..#3] real = [1,2,3];
+        // const input = new Tensor(inv);
 
-        var output = n.forwardProp(input);
-        var reversedInput = n.backwardProp(output);
+        // var output = n.forwardProp(input);
+        // var reversedInput = n.backwardProp(output);
         
-        writeln(input);
-        writeln(output);
-        writeln(reversedInput);
+        // writeln(input);
+        // writeln(output);
+        // writeln(reversedInput);
 
-        const t = tn.randn(3,4);
-        writeln(t);
+        // const t = tn.randn(3,4);
+        // writeln(t);
 
         // var shape = (3,4,5);
         // for i in 0..<(3 * 4 * 5) {
@@ -568,18 +621,20 @@ module Torch {
 
         var n2 = new Network(
             (
-                new Conv(10),
+                new Conv(1,8,3),
                 new MaxPool(),
+                new Conv(8,12,3),
                 new MaxPool(),
+                new SoftMax(5 * 5 * 12, 10)
             )
         );
-        const image = tn.randn(20,20);
+        const image = tn.randn(28,28,1);
         writeln(image);
         const convs = n2.forwardProp(image);
         writeln(convs);
         // var reversedImage = n2.backwardProp(convs);
         // writeln(reversedImage);
-        n2.train([(image,convs)],0.5);
+        // n2.train([(image,convs)],0.5);
 
     }
 }

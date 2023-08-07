@@ -32,11 +32,22 @@ proc loadImageBitmap(fn: string): [0..#28,0..#28] real {
     return bitmap;
 }
 
+// var net = new torch.Network(
+//     (
+//         new torch.Conv(16),
+//         new torch.MaxPool(),
+//         new torch.SoftMax(13 * 13 * 16,10)
+//     )
+// );
+
 var net = new torch.Network(
     (
-        new torch.Conv(16),
+        new torch.Conv(1,20,3),
         new torch.MaxPool(),
-        new torch.SoftMax(13 * 13 * 16,10)
+        // new torch.SoftMax(13 * 13 * 8,10)
+        new torch.Conv(20,10,3),
+        new torch.MaxPool(),
+        new torch.SoftMax(5 * 5 * 10,10)
     )
 );
 
@@ -48,7 +59,7 @@ var im = loadImageBitmap(testFile);
 
 if recenter then im -= 0.5;
 
-var image = new Tensor(im);
+var image = (new Tensor(im)).reshape(28,28,1);
 
 if normalize then
     image = image.normalize();
