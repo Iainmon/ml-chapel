@@ -24,7 +24,7 @@ else
 endif
 
 torch: clean
-	chpl $(fast_flag) $(my_lib) $(blas_libs)  $(output)/Torch week7/Torch.chpl
+	chpl $(fast_flag) $(my_lib) $(blas_libs)  $(output)/Torch week8/Torch.chpl
 	echo "Build complete."
 	./build/Torch
 
@@ -34,18 +34,18 @@ torchClassifier: clean
 	./build/torchClassifier
 
 cnn: clean
-	chpl $(fast_flag) $(my_lib) $(blas_libs)  $(output)/cnn week7/cnn.chpl
+	chpl $(fast_flag) $(my_lib) $(blas_libs)  $(output)/cnn week8/cnn.chpl
 	echo "Build complete."
 	./build/cnn
 
 runCNN: clean
-	chpl $(fast_flag) $(my_lib) $(blas_libs)  $(output)/runCNN week7/runCNN.chpl
+	chpl $(fast_flag) $(my_lib) $(blas_libs)  $(output)/runCNN week8/runCNN.chpl
 	echo "Build complete."
 	./build/runCNN
 
 
 tensor: clean
-	chpl $(fast_flag) $(my_lib) $(blas_libs)  $(output)/Tensor week7/Tensor.chpl
+	chpl $(fast_flag) $(my_lib) $(blas_libs)  $(output)/Tensor week8/Tensor.chpl
 	echo "Build complete."
 	./build/Tensor
 
