@@ -52,8 +52,8 @@ var net = new torch.Network(
     (
         new torch.Conv(1,8,7),
         new torch.Conv(8,12,5),
-        new torch.Conv(12,16,3),
-        new torch.SoftMax(16 * 16 * 16,10)
+        new torch.MaxPool(),
+        new torch.SoftMax(10)
     )
 );
 
@@ -147,6 +147,12 @@ for epoch in 0..12 {
         const batch = trainingData[batchRange];
         const (loss,acc) = train(batch);
         writeln("[",i + 1," of ", trainingData.size / batchSize, "] Loss ", loss / batchSize," Accuracy ", acc ," / ", batchSize);
+        
+        // if loss < 0.00001 {
+        //     net.save("models/cnn/epoch_"+ epoch:string +"_mnist.cnn.model");
+        //     halt(0);
+        // }
+
     }
 
     writeln("Evaluating...");
@@ -162,7 +168,8 @@ for epoch in 0..12 {
 
     writeln("End of epoch ", epoch + 1, " Loss ", loss / trainingData.size, " Accuracy ", numCorrect, " / ", trainingData.size);
 
-    // net.save("models/cnn/epoch_"+ epoch:string +"_mnist.cnn.model");
+    net.save("models/cnn/epoch_"+ epoch:string +"_mnist.cnn.model");
+
     
 }
 
@@ -179,7 +186,7 @@ proc debugFilters() {
     // }
     net.layers[0].filters.write(fw);
     net.layers[1].filters.write(fw);
-    net.layers[2].filters.write(fw);
+    // net.layers[2].filters.write(fw);
 
     fw.close();
     file.close();

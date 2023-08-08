@@ -121,7 +121,7 @@ module Torch {
 
         proc forwardProp(images: Tensor(3)): Tensor(3) {
             const (h,w,channels) = images.shape;
-            const (outChannels,kw,kh,inChannels) = filters.shape;
+            const (outChannels,kh,kw,inChannels) = filters.shape;
 
             if channels != inChannels then tn.err("Conv forwardProp: inChannels mismatch");
             
@@ -131,14 +131,13 @@ module Torch {
             var convs: [0..#newH, 0..#newW, 0..#outChannels] real;
             forall (i,j,k) in convs.domain {
                 forall c in 0..#inChannels {
-                    const region = images[i..#3, j..#3,c];
+                    const region = images[i..#kh, j..#kw,c];
                     const filter = filters.data[k,..,..,c];
                     const conv = region * filter;
                     convs[i,j,k] += + reduce conv;
                 }
             }
-            const output = new Tensor(convs);
-            return output;
+            return new Tensor(convs);
         }
 
         proc backward(delta: Tensor(3), images: Tensor(3)): Tensor(3) {
@@ -148,35 +147,26 @@ module Torch {
             if channels != inChannels then tn.err("Conv backward: inChannels mismatch");
 
 
-            // Calculate filter gradients
-            forall fo in 0..#outChannels {
-                const dL_dO = delta[..,..,fo];
-                forall fi in 0..#inChannels {
-                    const X = images[..,..,fi];
-                    const dL_dF = tn.convolve(dL_dO, X);
-                    filtersGrad.data[fo,..,..,fi] += dL_dF;
-                }
-            }
-
-            // Calculate input gradients
             var grad: [0..#h, 0..#w, 0..#inChannels] real;
             forall fo in 0..#outChannels {
                 const dL_dO = delta[..,..,fo];
                 forall fi in 0..#inChannels {
+                    // Calculate filter gradients
+                    const X = images[..,..,fi];
+                    const dL_dF = tn.convolve(dL_dO, X);
+                    filtersGrad.data[fo,..,..,fi] += dL_dF;
+
+                    // Calculate input gradients
                     const F = filters.data[fo,..,..,fi];
                     const F_rotated = tn.rotate180(F);
                     const dL_dX = tn.fullConvolve(dL_dO, F_rotated);
                     grad[..,..,fi] += dL_dX;
-                    // const dL_dX = tn.convolve(dL_dO, F.transpose());
-                    // images[..,..,fi] += dL_dX;
-                    
                 }
             }
+
             return new Tensor(grad);
 
-
-/*
-            
+            /*
             const newH = h - (kh - 1);
             const newW = w - (kw - 1);
 
@@ -407,15 +397,36 @@ module Torch {
         var weightsGrad: Tensor(2);
         var biasesGrad: Tensor(1);
 
+        var uninitialized: bool = true;
+        var outputSize: int = 0;
+
         proc init(inputLength: int, nodes: int) {
             weights = tn.randn(nodes,inputLength) / inputLength;
             biases = tn.zeros(nodes);
 
             weightsGrad = tn.zeros(nodes,inputLength);
             biasesGrad = tn.zeros(nodes);
+            uninitialized = false;
         }
 
+        proc init(outputSize: int) {
+            this.outputSize = outputSize;
+        }
+
+
         proc forwardProp(convs: Tensor(3)): Tensor(1) {
+            if uninitialized {
+                const inputLength = * reduce convs.shape;
+
+                weights = tn.randn(outputSize,inputLength) / inputLength;
+                biases = tn.zeros(outputSize);
+
+                weightsGrad = tn.zeros(outputSize,inputLength);
+                biasesGrad = tn.zeros(outputSize);
+
+                uninitialized = false;
+            }
+
             const flattened = convs.flatten();
             const z = (weights * flattened) + biases;
             const exp = tn.exp(z);
@@ -491,6 +502,7 @@ module Torch {
         proc read(fr: IO.fileReader) throws {
             weights.read(fr);
             biases.read(fr);
+            uninitialized = false;
         }
 
     }
