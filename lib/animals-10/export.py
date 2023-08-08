@@ -11,7 +11,7 @@ folers = os.listdir('raw-img')
 categories = {}
 for folder in folers:
     if folder == '.DS_Store': continue
-    key = (translate_inv | translate)[folder]
+    key = (dict(translate_inv,**translate))[folder]
     categories[key] = ['raw-img/' + folder + '/' + p for p in os.listdir('raw-img/' + folder)]
 
 def centering_image(img):
