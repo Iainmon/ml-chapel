@@ -185,7 +185,7 @@ module Tensor {
         proc read(fr: IO.fileReader) throws {
             var r = fr.read(int);
             if r != rank then
-                err("Error reading tensor: rank mismatch.");
+                err("Error reading tensor: rank mismatch.", r , " != this." , rank);
             var s = this.shape;
             for i in 0..#rank do
                 s[i] = fr.read(int);

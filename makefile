@@ -55,7 +55,15 @@ tensorTest: clean
 	echo "Build complete."
 	./build/test
 
+animals: clean
+	chpl $(fast_flag) $(my_lib) $(blas_libs)  $(output)/Animals10 week8/Animals10.chpl
+	echo "Build complete."
+	./build/Animals10
 
+animalCNN: clean
+	chpl $(fast_flag) $(my_lib) $(blas_libs)  $(output)/animalCNN week8/animalCNN.chpl
+	echo "Build complete."
+	./build/animalCNN
 
 classifier: clean
 	chpl $(fast_flag) $(my_lib) $(blas_libs)  $(output)/classifier week5/classifier.chpl

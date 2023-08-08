@@ -3,3 +3,4 @@ build/
 *.bin
 speed_tests/
 *.csv
+lib/animals-10/*.bin
