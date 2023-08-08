@@ -65,11 +65,13 @@ iter loadAllIter() {
 iter loadAllIter(max: int) {
     for name in categories {
         var t = loadCategory(name);
-        const (n,h,w,c) = t.shape;
+        var (n,h,w,c) = t.shape;
         if n > max {
             t = new Tensor(t[0..#max, .., .., ..]);
+            n = max;
         }
-        for i in 0..#n {
+
+        for i in 0..#(n) {
             const im = new Tensor(t[i, .., .., ..]);
             yield (name,im);
         }

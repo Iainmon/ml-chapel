@@ -123,7 +123,11 @@ module Torch {
             const (h,w,channels) = images.shape;
             const (outChannels,kh,kw,inChannels) = filters.shape;
 
-            if channels != inChannels then tn.err("Conv forwardProp: inChannels mismatch");
+            if channels != inChannels {
+                writeln("input: ", images.shape);
+                writeln("filters: ", filters.shape);
+                tn.err("Conv forwardProp: inChannels mismatch");
+            }
             
             const newH = h - (kh - 1);
             const newW = w - (kw - 1);
