@@ -73,8 +73,9 @@ proc train(data: [] (Tensor(3),int), lr: real = 0.005) {
 
 
 
-config const numImages = 1000;
+config const numImages = 1500;
 config const batchSize = 10;
+config const epochs = 20;
 
 var trainingData = for (name,im) in Animals10.loadAllIter(numImages) do  (im,Animals10.labelIdx(name));
 // var trainingData = imageData;
@@ -87,7 +88,7 @@ var trainingData = for (name,im) in Animals10.loadAllIter(numImages) do  (im,Ani
 
 // var trainingData = for a in zip(trainImages,trainLabels) do a;
 
-for epoch in 0..12 {
+for epoch in 0..epochs {
     
     writeln("Epoch ",epoch + 1);
 
