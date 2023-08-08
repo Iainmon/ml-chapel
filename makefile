@@ -50,6 +50,12 @@ tensor: clean
 	./build/Tensor
 
 
+tensorTest: clean
+	chpl $(fast_flag) $(my_lib) $(blas_libs)  $(output)/test week8/test.chpl
+	echo "Build complete."
+	./build/test
+
+
 
 classifier: clean
 	chpl $(fast_flag) $(my_lib) $(blas_libs)  $(output)/classifier week5/classifier.chpl
