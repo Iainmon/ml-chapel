@@ -131,27 +131,52 @@ module Torch {
             
             const newH = h - (kh - 1);
             const newW = w - (kw - 1);
-
+            tn.debugWrite("[enter conv forward]");
             var convs: [0..#newH, 0..#newW, 0..#outChannels] real;
-            forall (i,j,k) in convs.domain {
+            // Perhaps more efficient
+            forall f in 0..#outChannels {
+                const filter = filters.data[f,..,..,..];
+                forall (i,j) in zip(0..#newH, 0..#newW) {
+                    const region = images[i..#kh, j..#kw,..];
+                    const conv = region * filter;
+                    convs[i,j,f] += + reduce conv;
+                }
+            }
+
+            // Kind of slow when there are many out channels. 
+            /*forall (i,j,k) in convs.domain {
                 forall c in 0..#inChannels {
                     const region = images[i..#kh, j..#kw,c];
                     const filter = filters.data[k,..,..,c];
                     const conv = region * filter;
                     convs[i,j,k] += + reduce conv;
                 }
-            }
+            }*/
+            tn.debugWrite("[exit conv forward]\n");
             return new Tensor(convs);
         }
+    
 
         proc backward(delta: Tensor(3), images: Tensor(3)): Tensor(3) {
             const (h,w,channels) = images.shape;
-            const (outChannels,kw,kh,inChannels) = filters.shape;
+            const (outChannels,kh,kw,inChannels) = filters.shape;
+            const (dh,dw,dc) = delta.shape;
+
+            const hMargin = kh / 2;
+            const wMargin = kw / 2;
+
+            const hPadding = h - dh;
+            const wPadding = w - dw;
+
+            if dc != outChannels then tn.err("Conv backward: outChannels mismatch");
 
             if channels != inChannels then tn.err("Conv backward: inChannels mismatch");
 
+            tn.debugWrite("[enter conv backward]");
 
             var grad: [0..#h, 0..#w, 0..#inChannels] real;
+            // This seems to be slow on large images
+
             forall fo in 0..#outChannels {
                 const dL_dO = delta[..,..,fo];
                 forall fi in 0..#inChannels {
@@ -161,19 +186,114 @@ module Torch {
                     filtersGrad.data[fo,..,..,fi] += dL_dF;
 
                     // Calculate input gradients
-                    const F = filters.data[fo,..,..,fi];
-                    const F_rotated = tn.rotate180(F);
-                    const dL_dX = tn.fullConvolve(dL_dO, F_rotated);
+                    // const F = filters.data[fo,..,..,fi]; // pass in directly.
+                    // Y[hMargin..#h, wMargin..#w] = F;
+                    // const dL_dX = tn.convolveRotate(dL_dO, Y);
+                    // grad[..,..,fi] += dL_dX;
+                }
+            }
+            tn.debugWrite("[computing input gradient]");
+
+            forall fo in 0..#outChannels {
+                const dL_dO = delta[..,..,fo];
+                forall fi in 0..#inChannels with (var Y: [0..#hPadding, 0..#wPadding] real,
+                                                  var dL_dX: [0..#h, 0..#w] real) {
+                    const F = filters.data[fo,..,..,fi]; // pass in directly.
+                    Y[hMargin..#h, wMargin..#w] = F;
+                    tn.convolveRotateRef(dL_dO, Y, dL_dX);
                     grad[..,..,fi] += dL_dX;
                 }
             }
+
+
+
+            // Correct
+            // forall fo in 0..#outChannels {
+            //     const dL_dO = delta[..,..,fo];
+            //     forall fi in 0..#inChannels {
+            //         // Calculate input gradients
+            //         const F = filters.data[fo,..,..,fi];
+            //         const F_rotated = tn.rotate180(F);
+            //         const dL_dX = tn.fullConvolve(dL_dO, F_rotated);
+            //         grad[..,..,fi] += dL_dX;
+            //     }
+            // }
+
+            // Correct
+            /*forall (fo,fi) in tn.cartesian(0..#outChannels, 0..#inChannels) {
+                const dL_dO = delta.data[..,..,fo];
+                // Calculate input gradients
+                const F = filters.data[fo,..,..,fi];
+                const F_rotated = tn.rotate180(F);
+                const dL_dX = tn.fullConvolve(dL_dO, F_rotated);
+                grad[..,..,fi] += dL_dX;
+            }*/ 
+
+            // Probably correct, but doubt it
+            // forall (i,j,k) in delta.data.domain with (ref this) {
+            //     forall c in 0..#inChannels with (ref this) {
+            //         const region = images.data[i..#kh, j..#kw,c];
+            //         const filter = filters.data[k,..,..,c];
+            //         const conv = region * filter;
+            //         grad[i,j,c] += delta[i,j,k] * + reduce conv;
+            //     }
+            // }
+
+
+            // forall fo in 0..#outChannels {
+            //     const dL_dO = delta[..,..,fo];
+            //     forall fi in 0..#inChannels {
+            //         // Calculate filter gradients
+            //         const X = images[..,..,fi];
+            //         const dL_dF = tn.convolve(dL_dO, X);
+            //         filtersGrad.data[fo,..,..,fi] += dL_dF;
+
+            //         // Calculate input gradients
+            //         // const F = filters.data[fo,..,..,fi];
+            //         // const F_rotated = tn.rotate180(F);
+            //         // const dL_dX = tn.fullConvolve(dL_dO, F_rotated);
+            //         // grad[..,..,fi] += dL_dX;
+            //     }
+            // }
+
+            // forall (m,n,c) in grad.domain {
+            //     forall (i,j,k) in delta.domain {
+            //         const dL_dYij = delta[i,j,k];
+            //         const dYij_dXmn = filters.data[k,m,n,c];
+
+            //         grad[m,n,c] += 
+            //     }
+            // }
+
+            // TODO write convolution iterator for regions. 
+
+            // forall (i,j,c) in grad.domain {
+            //     forall f in 0..#outChannels {
+            //         const K = filters.data[f,..,..,c];
+            //         const region = delta.data[i..#kh, j..#kw,f];
+            //         grad[i,j,c] += + reduce (region * K);
+            //     }
+            // }
+
+            // forall (i,j,k) in delta.data.domain {
+            //     forall c in 0..#inChannels {
+            //         const region = images.data[i..#kh, j..#kw,c];
+            //         const filter = filters.data[k,..,..,c];
+            //         const filterRot = tn.rotate180(filter);
+            //         const conv = region * filter;
+            //         grad[i,j,c] += delta[i,j,k] * + reduce conv;
+            //     }
+            // }
+
+            tn.debugWrite("[exit conv backward]\n");
+
 
             return new Tensor(grad);
 
             /*
             const newH = h - (kh - 1);
             const newW = w - (kw - 1);
-
+            // possibly efficient implementation unsure about correctness.
             var grad: [0..#h, 0..#w, 0..#channels] real;
             forall (i,j,k) in delta.data.domain {
                 forall c in 0..#inChannels {
@@ -419,6 +539,8 @@ module Torch {
 
 
         proc forwardProp(convs: Tensor(3)): Tensor(1) {
+            tn.debugWrite("[enter softmax forward]");
+
             if uninitialized {
                 const inputLength = * reduce convs.shape;
 
@@ -435,6 +557,9 @@ module Torch {
             const z = (weights * flattened) + biases;
             const exp = tn.exp(z);
             const expSum = + reduce exp.data;
+
+            tn.debugWrite("[exit softmax forward]\n");
+
             return exp / expSum;
         }
 
@@ -528,10 +653,10 @@ module Torch {
     proc backwardForwardPropHelp(ref layers, param n: int, x: Tensor(?), lastDelta: Tensor(?)) {
         // if n == layers.size then return lastDelta;
 
-        const lastInput = layers[n].forwardProp(x);
         if n == layers.size - 1 then
             return layers[n].backward(lastDelta,x);
 
+        const lastInput = layers[n].forwardProp(x);
         const delta = backwardForwardPropHelp(layers, n+1, lastInput, lastDelta);
         return layers[n].backward(delta,x);
     }

@@ -10,15 +10,28 @@ import BinaryIO;
 
 var net = new torch.Network(
     (
-        new torch.Conv(3,32,kernelSize=5),
-        new torch.Conv(32,64,kernelSize=3),
+        new torch.Conv(3,32,kernelSize=3),
         new torch.MaxPool(),
-        new torch.Conv(64,128,kernelSize=3),
-        new torch.Conv(128,256,kernelSize=3),
+        new torch.Conv(32,32,kernelSize=3),
         new torch.MaxPool(),
-        new torch.Conv(256,512,kernelSize=3),
-        new torch.Conv(512,1024,kernelSize=3),
+        new torch.Conv(32,32,kernelSize=3),
+        new torch.Conv(32,32,kernelSize=3),
         new torch.MaxPool(),
+        new torch.Conv(32,32,kernelSize=3),
+        new torch.Conv(32,32,kernelSize=3),
+        new torch.MaxPool(),
+        new torch.Conv(32,32,kernelSize=3),
+        new torch.Conv(32,32,kernelSize=3),
+        new torch.MaxPool(),
+        // new torch.Conv(128,128,kernelSize=3),
+        // new torch.Conv(128,128,kernelSize=3),
+        // new torch.MaxPool(),
+        // new torch.Conv(128,128,kernelSize=3),
+        // new torch.Conv(128,128,kernelSize=3),
+        // new torch.MaxPool(),
+        // new torch.Conv(128,128,kernelSize=3),
+        // new torch.Conv(128,128,kernelSize=3),
+        // new torch.MaxPool(),
         new torch.SoftMax(10)
     )
 );
@@ -73,8 +86,8 @@ proc train(data: [] (Tensor(3),int), lr: real = 0.005) {
 
 
 
-config const numImages = 1500;
-config const batchSize = 10;
+config const numImages = 10;
+config const batchSize = 1;
 config const epochs = 20;
 
 var trainingData = for (name,im) in Animals10.loadAllIter(numImages) do  (im,Animals10.labelIdx(name));
@@ -111,6 +124,7 @@ for epoch in 0..epochs {
     //     loss += l;
     //     numCorrect += a;
     // }
+    writeln(forward(trainingData.first[0],trainingData.first[1]));
 
     for i in 0..#(trainingData.size / batchSize) {
         const batchRange = (i * batchSize)..#batchSize;

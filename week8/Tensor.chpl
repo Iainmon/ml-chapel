@@ -14,6 +14,31 @@ module Tensor {
         }
         try! throw new Error(s);
     }
+    proc debugWrite(args...?n) {
+        var s = "";
+        for param i in 0..<n {
+            s += args(i): string;
+        }
+        try! IO.stdout.write(s);
+        try! IO.stdout.flush();
+    }
+
+    iter cartesian(X,Y) {
+        for x in X {
+            for y in Y {
+                yield (x,y);
+            }
+        }
+    }
+    iter cartesian(param tag: iterKind,X,Y) where tag == iterKind.standalone {
+        forall x in X {
+            forall y in Y {
+                yield (x,y);
+            }
+        }
+    }
+
+
 
     proc domainFromShape(shape: int ...?d): domain(d,int) {
         var ranges: d*range;
@@ -329,9 +354,52 @@ module Tensor {
         const newH = h - (kh - 1);
         const newW = w - (kw - 1);
         var Y: [0..#newH,0..#newW] eltType;
+        // forall (i,j) in Y.domain with (var region: [0..#kh,0..#kw] eltType) {
+        //     region = X[i..#kh, j..#kw];
+        //     Y[i,j] = + reduce (region * kernel);
+        // }
+
         forall (i,j) in Y.domain {
-            const region = X[i..#kh, j..#kw];
-            Y[i,j] = + reduce (region * kernel);
+            var sum = 0.0;
+            forall (k,l) in kernel.domain with (+ reduce sum) {
+                sum += X[i + k, j + l] * kernel[k,l];
+            }
+            Y[i,j] = sum;
+        }
+        return Y;
+    }
+
+
+    proc convolveRotateRef(const ref kernel: [?dk] ?eltType, const ref X: [?dx] eltType, ref Y: [?dy] eltType) where dx.rank == 2 && dk.rank == 2 {
+        const (h,w) = X.shape;
+        const (kh,kw) = kernel.shape;
+        const newH = h - (kh - 1);
+        const newW = w - (kw - 1);
+        // var Y: [0..#newH,0..#newW] eltType;
+        
+        forall (i,j) in Y.domain {
+            var sum = 0.0;
+            forall (k,l) in kernel.domain with (+ reduce sum) {
+                sum += X[i + k, j + l] * kernel[kh - k - 1, kw - l - 1];
+            }
+            Y[i,j] = sum;
+        }
+        // return Y;
+    }
+
+    proc convolveRotate(kernel: [?dk] ?eltType, X: [?dx] eltType) where dx.rank == 2 && dk.rank == 2 {
+        const (h,w) = X.shape;
+        const (kh,kw) = kernel.shape;
+        const newH = h - (kh - 1);
+        const newW = w - (kw - 1);
+        var Y: [0..#newH,0..#newW] eltType;
+        
+        forall (i,j) in Y.domain {
+            var sum = 0.0;
+            forall (k,l) in kernel.domain with (+ reduce sum) {
+                sum += X[i + k, j + l] * kernel[kh - k - 1, kw - l - 1];
+            }
+            Y[i,j] = sum;
         }
         return Y;
     }
