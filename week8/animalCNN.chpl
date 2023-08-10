@@ -93,7 +93,7 @@ for epoch in 0..epochs {
     writeln("Epoch ",epoch + 1);
 
 
-    Random.shuffle(trainingData);
+    // Random.shuffle(trainingData);
 
     // debugFilters();
 
