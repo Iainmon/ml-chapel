@@ -92,6 +92,7 @@ proc train(data: [] (Tensor(3),int), lr: real = 0.005) {
 config const numImages = 500;
 config const batchSize = 1;
 config const epochs = 20;
+config const learnRate = 0.005;
 
 var trainingData = for (name,im) in Animals10.loadAllIter(numImages) do (im,Animals10.labelIdx(name));
 forall (im,lb) in trainingData {
@@ -133,7 +134,7 @@ for epoch in 0..epochs {
     //     numCorrect += a;
     // }
     writeln(forward(trainingData.first[0],trainingData.first[1]));
-    writeln(train(trainingData.first[0],trainingData.first[1]));
+    writeln(train(trainingData.first[0],trainingData.first[1],learnRate));
     writeln(forward(trainingData.first[0],trainingData.first[1]),trainingData.first[1]);
     writeln("Hopefully not NAN");
     // writeln(trainingData.first[0],trainingData.first[1]);
@@ -142,7 +143,7 @@ for epoch in 0..epochs {
     for i in 0..#(trainingData.size / batchSize) {
         const batchRange = (i * batchSize)..#batchSize;
         const batch = trainingData[batchRange];
-        const (loss,acc) = train(batch);
+        const (loss,acc) = train(batch,learnRate);
         writeln("[",i + 1," of ", trainingData.size / batchSize, "] Loss ", loss / batchSize," Accuracy ", acc ," / ", batchSize);
         
         // if loss < 0.00001 {
