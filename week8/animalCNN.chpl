@@ -22,12 +22,12 @@ var net = new torch.Network(
         new torch.Conv(128,128,kernelSize=3),
         new torch.MaxPool(),
         new torch.Conv(128,256,kernelSize=3),
-        new torch.Conv(256,512,kernelSize=3),
-        new torch.Conv(512,512,kernelSize=3),
-        new torch.Conv(512,512,kernelSize=3),
+        new torch.Conv(256,256,kernelSize=3),
+        new torch.Conv(256,256,kernelSize=3),
+        // new torch.Conv(512,512,kernelSize=3),
         new torch.MaxPool(),
-        new torch.Conv(512,512,kernelSize=3),
-        new torch.Conv(512,512,kernelSize=3),
+        new torch.Conv(256,256,kernelSize=3),
+        new torch.Conv(256,256,kernelSize=3),
         new torch.MaxPool(),
         new torch.SoftMax(10)
     )
