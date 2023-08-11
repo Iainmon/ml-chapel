@@ -101,6 +101,7 @@ module Torch {
         var numFilters: int;
         var filters: Tensor(4);
         var filtersGrad: Tensor(4);
+        var isFirstLayer = false;
 
         proc init(inChannels: int,outChannels: int, kernelSize: int = 3) {
             const numFilters = outChannels;
@@ -192,18 +193,20 @@ module Torch {
                     // grad[..,..,fi] += dL_dX;
                 }
             }
+
+            if this.isFirstLayer then return tn.zeros(0,0,0);
             tn.debugWrite("[computing input gradient]");
 
-            forall fo in 0..#outChannels {
-                const dL_dO = delta[..,..,fo];
-                forall fi in 0..#inChannels with (var Y: [0..#hPadding, 0..#wPadding] real,
-                                                  var dL_dX: [0..#h, 0..#w] real) {
-                    const F = filters.data[fo,..,..,fi]; // pass in directly.
-                    Y[hMargin..#h, wMargin..#w] = F;
-                    tn.convolveRotateRef(dL_dO, Y, dL_dX);
-                    grad[..,..,fi] += dL_dX;
-                }
-            }
+            // forall fo in 0..#outChannels {
+            //     const dL_dO = delta[..,..,fo];
+            //     forall fi in 0..#inChannels with (var Y: [0..#hPadding, 0..#wPadding] real,
+            //                                       var dL_dX: [0..#h, 0..#w] real) {
+            //         const F = filters.data[fo,..,..,fi]; // pass in directly.
+            //         Y[hMargin..#h, wMargin..#w] = F;
+            //         tn.convolveRotateRefPadding(dL_dO, Y, dL_dX);
+            //         grad[..,..,fi] += dL_dX;
+            //     }
+            // }
 
 
 
@@ -230,14 +233,14 @@ module Torch {
             }*/ 
 
             // Probably correct, but doubt it
-            // forall (i,j,k) in delta.data.domain with (ref this) {
-            //     forall c in 0..#inChannels with (ref this) {
-            //         const region = images.data[i..#kh, j..#kw,c];
-            //         const filter = filters.data[k,..,..,c];
-            //         const conv = region * filter;
-            //         grad[i,j,c] += delta[i,j,k] * + reduce conv;
-            //     }
-            // }
+            forall (i,j,k) in delta.data.domain with (ref this) {
+                forall c in 0..#inChannels with (ref this) {
+                    const region = images.data[i..#kh, j..#kw,c];
+                    const filter = filters.data[k,..,..,c];
+                    const conv = region * filter;
+                    grad[i,j,c] += delta[i,j,k] * + reduce conv;
+                }
+            }
 
 
             // forall fo in 0..#outChannels {
@@ -387,7 +390,7 @@ module Torch {
             filters -= mag * filtersGrad;
         }
         proc resetGradients() {
-            filtersGrad.data = 0;
+            filtersGrad.data = 0.0;
         }
 
         proc write(fw: IO.fileWriter) throws {
@@ -525,8 +528,8 @@ module Torch {
         var outputSize: int = 0;
 
         proc init(inputLength: int, nodes: int) {
-            weights = tn.randn(nodes,inputLength) / inputLength;
-            biases = tn.zeros(nodes);
+            weights = tn.randn(nodes,inputLength);// / inputLength;
+            biases = tn.randn(nodes);
 
             weightsGrad = tn.zeros(nodes,inputLength);
             biasesGrad = tn.zeros(nodes);
@@ -543,6 +546,7 @@ module Torch {
 
             if uninitialized {
                 const inputLength = * reduce convs.shape;
+                if inputLength < 1 then tn.err("Softmax input size must be > 0");
 
                 weights = tn.randn(outputSize,inputLength) / inputLength;
                 biases = tn.zeros(outputSize);
@@ -574,7 +578,7 @@ module Torch {
 
             var nonZeroIdx: int = -1;
             for i in delta.data.domain do
-                if delta[i] != 0 { nonZeroIdx = i; break; }
+                if delta[i] != 0.0 { nonZeroIdx = i; break; }
             
             if nonZeroIdx == -1 then tn.err("Softmax backward: delta is zero vector");
             const i = nonZeroIdx;
@@ -615,12 +619,12 @@ module Torch {
         }
 
         proc optimize(mag: real(64)) {
-            weights -= mag * weightsGrad;
-            biases -= mag * biasesGrad;
+            weights.data -= mag * weightsGrad.data;
+            biases.data -= mag * biasesGrad.data;
         }
         proc resetGradients() {
-            weightsGrad.data = 0;
-            biasesGrad.data = 0;
+            weightsGrad.data = 0.0;
+            biasesGrad.data = 0.0;
         }
 
         proc write(fw: IO.fileWriter) throws {
@@ -653,8 +657,12 @@ module Torch {
     proc backwardForwardPropHelp(ref layers, param n: int, x: Tensor(?), lastDelta: Tensor(?)) {
         // if n == layers.size then return lastDelta;
 
-        if n == layers.size - 1 then
+        if n == layers.size - 1 {
             return layers[n].backward(lastDelta,x);
+            // const d = layers[n].backward(lastDelta,x);
+            // writeln("Last layer delta:", d);
+            // return d;
+        }
 
         const lastInput = layers[n].forwardProp(x);
         const delta = backwardForwardPropHelp(layers, n+1, lastInput, lastDelta);
@@ -666,6 +674,7 @@ module Torch {
 
         proc init(layers) {
             this.layers = layers;
+            this.layers[0].isFirstLayer = true;
         }
 
         proc forwardProp(x: Tensor(?)) {

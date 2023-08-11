@@ -6,6 +6,7 @@ module Tensor {
     import IO.FormattedIO;
     import ChapelArray;
 
+    param debugPrint = false;
 
     proc err(args...?n) {
         var s = "";
@@ -15,12 +16,14 @@ module Tensor {
         try! throw new Error(s);
     }
     proc debugWrite(args...?n) {
-        var s = "";
-        for param i in 0..<n {
-            s += args(i): string;
+        if debugPrint {
+            var s = "";
+            for param i in 0..<n {
+                s += args(i): string;
+            }
+            try! IO.stdout.write(s);
+            try! IO.stdout.flush();
         }
-        try! IO.stdout.write(s);
-        try! IO.stdout.flush();
     }
 
     iter cartesian(X,Y) {
@@ -69,7 +72,7 @@ module Tensor {
     
     record Tensor {
         param rank: int;
-        type eltType = real;
+        type eltType = real(64);
 
         var _domain: domain(rank,int);
         var data: [_domain] eltType;
@@ -337,11 +340,11 @@ module Tensor {
     }
 
     proc argmax(A: [?d] real) where d.rank == 1 {
-        var max: real = A[0];
+        // var max: real = A[0];
         var am: int = 0;
         for i in A.domain {
-            if A[i] > max {
-                max = A[i];
+            if A[i] > A[am] {
+                // max = A[i];
                 am = i;
             }
         }
@@ -370,7 +373,7 @@ module Tensor {
     }
 
 
-    proc convolveRotateRef(const ref kernel: [?dk] ?eltType, const ref X: [?dx] eltType, ref Y: [?dy] eltType) where dx.rank == 2 && dk.rank == 2 {
+    proc convolveRotateRefPadding(const ref kernel: [?dk] ?eltType, const ref X: [?dx] eltType, ref Y: [?dy] eltType) where dx.rank == 2 && dk.rank == 2 {
         const (h,w) = X.shape;
         const (kh,kw) = kernel.shape;
         const newH = h - (kh - 1);
@@ -380,7 +383,7 @@ module Tensor {
         forall (i,j) in Y.domain {
             var sum = 0.0;
             forall (k,l) in kernel.domain with (+ reduce sum) {
-                sum += X[i + k, j + l] * kernel[kh - k - 1, kw - l - 1];
+                sum += X[h - i - k - 1, h - j - l - 1] * kernel[k,l];
             }
             Y[i,j] = sum;
         }

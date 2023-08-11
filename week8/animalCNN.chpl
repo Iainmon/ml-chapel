@@ -10,28 +10,25 @@ import BinaryIO;
 
 var net = new torch.Network(
     (
-        new torch.Conv(3,32,kernelSize=3),
+        new torch.Conv(3,16,kernelSize=3),
+        new torch.Conv(16,16,kernelSize=3),
         new torch.MaxPool(),
-        new torch.Conv(32,32,kernelSize=3),
-        new torch.MaxPool(),
-        new torch.Conv(32,32,kernelSize=3),
-        new torch.Conv(32,32,kernelSize=3),
-        new torch.MaxPool(),
-        new torch.Conv(32,32,kernelSize=3),
+        new torch.Conv(16,32,kernelSize=3),
         new torch.Conv(32,32,kernelSize=3),
         new torch.MaxPool(),
-        new torch.Conv(32,32,kernelSize=3),
-        new torch.Conv(32,32,kernelSize=3),
+        new torch.Conv(32,64,kernelSize=3),
+        new torch.Conv(64,64,kernelSize=3),
+        new torch.Conv(64,128,kernelSize=3),
+        new torch.Conv(128,128,kernelSize=3),
         new torch.MaxPool(),
-        // new torch.Conv(128,128,kernelSize=3),
-        // new torch.Conv(128,128,kernelSize=3),
-        // new torch.MaxPool(),
-        // new torch.Conv(128,128,kernelSize=3),
-        // new torch.Conv(128,128,kernelSize=3),
-        // new torch.MaxPool(),
-        // new torch.Conv(128,128,kernelSize=3),
-        // new torch.Conv(128,128,kernelSize=3),
-        // new torch.MaxPool(),
+        new torch.Conv(128,256,kernelSize=3),
+        new torch.Conv(256,512,kernelSize=3),
+        new torch.Conv(512,512,kernelSize=3),
+        new torch.Conv(512,512,kernelSize=3),
+        new torch.MaxPool(),
+        new torch.Conv(512,512,kernelSize=3),
+        new torch.Conv(512,512,kernelSize=3),
+        new torch.MaxPool(),
         new torch.SoftMax(10)
     )
 );
@@ -41,7 +38,6 @@ var net = new torch.Network(
 
 proc forward(x: Tensor(?), lb: int) {
     const output = net.forwardProp(x);
-
     const loss = -Math.log(output[lb]);
     var acc = tn.argmax(output.data) == lb;
 
@@ -54,8 +50,15 @@ proc train(im: Tensor(?), lb: int, lr: real = 0.005) {
     gradient[lb] = -1.0 / output[lb];
 
     net.resetGradients();
+
     net.backwardProp(im,gradient);
+
+    // const backward = net.layers.last.backward(gradient,);
+    // const backward = net.backwardProp(im,gradient);
     net.optimize(lr);
+
+    writeln("Gradient ",gradient);
+    // writeln("Backward ",backward);
 
     return (loss,acc);
 }
@@ -71,7 +74,7 @@ proc train(data: [] (Tensor(3),int), lr: real = 0.005) {
     forall ((im,lb),i) in zip(data,0..) with (ref net,+ reduce loss, + reduce acc) {
         const (output,l,a) = forward(im,lb);
         var gradient = tn.zeros(10);
-        gradient[lb] = -1.0 / output[lb];
+        gradient[lb] = -(1.0 / output[lb]);
         
         net.backwardProp(im,gradient);
 
@@ -86,11 +89,16 @@ proc train(data: [] (Tensor(3),int), lr: real = 0.005) {
 
 
 
-config const numImages = 10;
+config const numImages = 80;
 config const batchSize = 1;
 config const epochs = 20;
 
-var trainingData = for (name,im) in Animals10.loadAllIter(numImages) do  (im,Animals10.labelIdx(name));
+var trainingData = for (name,im) in Animals10.loadAllIter(numImages) do (im,Animals10.labelIdx(name));
+forall (im,lb) in trainingData {
+    im.data /= 225.0;
+    im.data -= 0.5;
+}
+
 // var trainingData = imageData;
 // var imageData = Animals10.loadAll(numImages);
 
@@ -106,7 +114,7 @@ for epoch in 0..epochs {
     writeln("Epoch ",epoch + 1);
 
 
-    // Random.shuffle(trainingData);
+    Random.shuffle(trainingData);
 
     // debugFilters();
 
@@ -125,6 +133,11 @@ for epoch in 0..epochs {
     //     numCorrect += a;
     // }
     writeln(forward(trainingData.first[0],trainingData.first[1]));
+    writeln(train(trainingData.first[0],trainingData.first[1]));
+    writeln(forward(trainingData.first[0],trainingData.first[1]),trainingData.first[1]);
+    writeln("Hopefully not NAN");
+    // writeln(trainingData.first[0],trainingData.first[1]);
+    // halt(0);
 
     for i in 0..#(trainingData.size / batchSize) {
         const batchRange = (i * batchSize)..#batchSize;
