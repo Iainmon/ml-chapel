@@ -89,7 +89,7 @@ proc train(data: [] (Tensor(3),int), lr: real = 0.005) {
 
 
 
-config const numImages = 80;
+config const numImages = 500;
 config const batchSize = 1;
 config const epochs = 20;
 
