@@ -106,7 +106,7 @@ module Torch {
         proc init(inChannels: int,outChannels: int, kernelSize: int = 3) {
             const numFilters = outChannels;
             this.numFilters = numFilters;
-            this.filters = tn.randn(numFilters,kernelSize,kernelSize,inChannels) ;// ;/ (kernelSize:real ** 2.0);
+            this.filters = tn.randn(numFilters,kernelSize,kernelSize,inChannels) / (kernelSize:real ** 2.0);
             this.filtersGrad = tn.zeros(numFilters,kernelSize,kernelSize,inChannels);
         }
 
@@ -548,8 +548,8 @@ module Torch {
                 const inputLength = * reduce convs.shape;
                 if inputLength < 1 then tn.err("Softmax input size must be > 0");
 
-                weights = tn.randn(outputSize,inputLength) ;//;/ inputLength;
-                biases = tn.randn(outputSize);
+                weights = tn.randn(outputSize,inputLength) / (inputLength: real);
+                biases = tn.zeros(outputSize);
 
                 weightsGrad = tn.zeros(outputSize,inputLength);
                 biasesGrad = tn.zeros(outputSize);
