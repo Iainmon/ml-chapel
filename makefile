@@ -24,7 +24,7 @@ else
 endif
 
 torch: clean
-	chpl $(fast_flag) $(my_lib) $(blas_libs)  $(output)/Torch week8/Torch.chpl
+	chpl $(fast_flag) $(my_lib) $(blas_libs)  $(output)/Torch week9/Torch.chpl
 	echo "Build complete."
 	./build/Torch
 
@@ -34,34 +34,34 @@ torchClassifier: clean
 	./build/torchClassifier
 
 cnn: clean
-	chpl $(fast_flag) $(my_lib) $(blas_libs)  $(output)/cnn week8/cnn.chpl
+	chpl $(fast_flag) $(my_lib) $(blas_libs)  $(output)/cnn week9/cnn.chpl
 	echo "Build complete."
 	./build/cnn
 
 runCNN: clean
-	chpl $(fast_flag) $(my_lib) $(blas_libs)  $(output)/runCNN week8/runCNN.chpl
+	chpl $(fast_flag) $(my_lib) $(blas_libs)  $(output)/runCNN week9/runCNN.chpl
 	echo "Build complete."
 	./build/runCNN
 
 
 tensor: clean
-	chpl $(fast_flag) $(my_lib) $(blas_libs)  $(output)/Tensor week8/Tensor.chpl
+	chpl $(fast_flag) $(my_lib) $(blas_libs)  $(output)/Tensor week9/Tensor.chpl
 	echo "Build complete."
 	./build/Tensor
 
 
 tensorTest: clean
-	chpl $(fast_flag) $(my_lib) $(blas_libs)  $(output)/test week8/test.chpl
+	chpl $(fast_flag) $(my_lib) $(blas_libs)  $(output)/test week9/test.chpl
 	echo "Build complete."
 	./build/test
 
 animals: clean
-	chpl $(fast_flag) $(my_lib) $(blas_libs)  $(output)/Animals10 week8/Animals10.chpl
+	chpl $(fast_flag) $(my_lib) $(blas_libs)  $(output)/Animals10 week9/Animals10.chpl
 	echo "Build complete."
 	./build/Animals10
 
 animalCNN: clean
-	chpl $(fast_flag) $(my_lib) $(blas_libs)  $(output)/animalCNN week8/animalCNN.chpl
+	chpl $(fast_flag) $(my_lib) $(blas_libs)  $(output)/animalCNN week9/animalCNN.chpl
 	echo "Build complete."
 	./build/animalCNN
 
