@@ -8,30 +8,45 @@ import Random;
 import IO;
 import BinaryIO;
 
+import Time;
+
 var net = new torch.Network(
     (
-        new torch.Conv(3,16,kernelSize=3),
-        new torch.Conv(16,16,kernelSize=3),
+        new torch.Conv(3,6,kernelSize=7),
         new torch.MaxPool(),
-        new torch.Conv(16,32,kernelSize=3),
-        // new torch.Conv(32,32,kernelSize=5),
+        new torch.Conv(6,8,kernelSize=5),
         new torch.MaxPool(),
-        new torch.Conv(32,64,kernelSize=3),
-        // new torch.Conv(64,64,kernelSize=3),
-        new torch.Conv(64,128,kernelSize=3),
-        // new torch.Conv(128,128,kernelSize=3),
+        new torch.Conv(8,10,kernelSize=3),
+        new torch.Conv(10,12,kernelSize=3),
         new torch.MaxPool(),
-        new torch.Conv(128,256,kernelSize=3),
-        new torch.Conv(256,256,kernelSize=3),
-        // new torch.Conv(256,256,kernelSize=3),
-        // new torch.Conv(512,512,kernelSize=3),
-        new torch.MaxPool(),
-        // new torch.Conv(256,256,kernelSize=3),
-        // new torch.Conv(256,256,kernelSize=3),
-        // new torch.MaxPool(),
+
         new torch.SoftMax(10)
     )
 );
+// var net = new torch.Network(
+//     (
+//         new torch.Conv(3,16,kernelSize=3),
+//         new torch.Conv(16,16,kernelSize=3),
+//         new torch.MaxPool(),
+//         new torch.Conv(16,32,kernelSize=3),
+//         // new torch.Conv(32,32,kernelSize=5),
+//         new torch.MaxPool(),
+//         new torch.Conv(32,64,kernelSize=3),
+//         // new torch.Conv(64,64,kernelSize=3),
+//         new torch.Conv(64,128,kernelSize=3),
+//         // new torch.Conv(128,128,kernelSize=3),
+//         new torch.MaxPool(),
+//         new torch.Conv(128,256,kernelSize=3),
+//         new torch.Conv(256,256,kernelSize=3),
+//         // new torch.Conv(256,256,kernelSize=3),
+//         // new torch.Conv(512,512,kernelSize=3),
+//         new torch.MaxPool(),
+//         // new torch.Conv(256,256,kernelSize=3),
+//         // new torch.Conv(256,256,kernelSize=3),
+//         // new torch.MaxPool(),
+//         new torch.SoftMax(10)
+//     )
+// );
 
 // net.save("mnist.cnn.model");
 // net.load("models/cnn/epoch_0_mnist.cnn.model");
@@ -89,14 +104,14 @@ proc train(data: [] (Tensor(3),int), lr: real = 0.005) {
 
 
 
-config const numImages = 500;
+config const numImages = 50;
 config const batchSize = 1;
 config const epochs = 20;
 config const learnRate = 0.005;
 
 var trainingData = for (name,im) in Animals10.loadAllIter(numImages) do (im,Animals10.labelIdx(name));
 forall (im,lb) in trainingData {
-    im.data /= 225.0;
+    im.data /= 255.0; // 225.0 ?
     im.data -= 0.5;
 }
 
@@ -120,6 +135,7 @@ for epoch in 0..epochs {
     // debugFilters();
 
 
+
     // var loss = 0.0;
     // var numCorrect = 0;
     // for ((im,lb),i) in zip(trainingData,0..) {
@@ -140,18 +156,26 @@ for epoch in 0..epochs {
     // writeln(trainingData.first[0],trainingData.first[1]);
     // halt(0);
 
+    var st = new Time.stopwatch();
+
+    var totalTime = 0.0;
     for i in 0..#(trainingData.size / batchSize) {
+
         const batchRange = (i * batchSize)..#batchSize;
         const batch = trainingData[batchRange];
-        const (loss,acc) = train(batch,learnRate);
-        writeln("[",i + 1," of ", trainingData.size / batchSize, "] Loss ", loss / batchSize," Accuracy ", acc ," / ", batchSize);
         
-        // if loss < 0.00001 {
-        //     net.save("models/cnn/epoch_"+ epoch:string +"_mnist.cnn.model");
-        //     halt(0);
-        // }
+        st.clear();
+        st.restart();
+        
+        const (loss,acc) = train(batch,learnRate);
+        
+        const t = st.elapsed();
+        totalTime += t;
+
+        writeln("[",i + 1," of ", trainingData.size / batchSize, "] (loss: ", loss / batchSize,") (accuracy: ", acc ," / ", batchSize, ") (time: ", t, "s)", " (avg: ", totalTime / (i + 1), "s)");
 
     }
+
 
     writeln("Evaluating...");
 
