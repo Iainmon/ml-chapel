@@ -135,24 +135,24 @@ module Torch {
             tn.debugWrite("[enter conv forward]");
             var convs: [0..#newH, 0..#newW, 0..#outChannels] real;
             // Perhaps more efficient
-            // forall f in 0..#outChannels {
-            //     const filter = filters.data[f,..,..,..];
-            //     forall (i,j) in tn.cartesian(0..#newH, 0..#newW) {
-            //         const region = images[i..#kh, j..#kw,..];
-            //         const conv = region * filter;
-            //         convs[i,j,f] += + reduce conv;
-            //     }
-            // }
-
-            // Kind of slow when there are many out channels. 
-            forall (i,j,k) in convs.domain {
-                forall c in 0..#inChannels {
-                    const region = images[i..#kh, j..#kw,c];
-                    const filter = filters.data[k,..,..,c];
+            forall f in 0..#outChannels {
+                const filter = filters.data[f,..,..,..];
+                forall (i,j) in tn.cartesian(0..#newH, 0..#newW) {
+                    const region = images[i..#kh, j..#kw,..];
                     const conv = region * filter;
-                    convs[i,j,k] += + reduce conv;
+                    convs[i,j,f] += + reduce conv;
                 }
             }
+
+            // Kind of slow when there are many out channels. 
+            // forall (i,j,k) in convs.domain {
+            //     forall c in 0..#inChannels {
+            //         const region = images[i..#kh, j..#kw,c];
+            //         const filter = filters.data[k,..,..,c];
+            //         const conv = region * filter;
+            //         convs[i,j,k] += + reduce conv;
+            //     }
+            // }
             tn.debugWrite("[exit conv forward]\n");
             return new Tensor(convs);
         }
