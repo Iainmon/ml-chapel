@@ -103,16 +103,18 @@ module Torch {
         var filtersGrad: Tensor(4);
         var isFirstLayer = false;
         var stride: int = 1;
+        var padding: int = 0;
 
-        proc init(inChannels: int,outChannels: int, kernelSize: int = 3, stride = 1) {
+        proc init(inChannels: int,outChannels: int, kernelSize: int = 3, stride: int = 1, padding: int = 0) {
             const numFilters = outChannels;
             this.numFilters = numFilters;
             this.filters = tn.randn(numFilters,kernelSize,kernelSize,inChannels) / (kernelSize:real ** 2.0);
             this.filtersGrad = tn.zeros(numFilters,kernelSize,kernelSize,inChannels);
             this.stride = stride;
+            this.padding = padding;
         }
         iter regions(images: Tensor(3)) {
-            
+
         }
         iter regions(image: Tensor(2)) {
             const (h,w) = image.shape;
@@ -133,7 +135,17 @@ module Torch {
                 writeln("filters: ", filters.shape);
                 tn.err("Conv forwardProp: inChannels mismatch");
             }
+
+            var convs = new Tensor(3,real);
+            const (newH,newW) = correlateShape((kh,kw),(h,w),stride,padding);
+            convs.reshapeDomain({0..#newH, 0..#newW, 0..#outChannels});
+            forall f in 0..#outChannels with (ref convs, var filter: Tensor(3) = tn.zeros(kh,kw,channels)) {
+                filter.data = filters[f,..,..,..];
+                convs[..,..,f] = correlate(filter=filter,input=images,stride=stride,padding=padding);
+            }
+            return convs;
             
+            /* // this works
             const newH = h - (kh - 1);
             const newW = w - (kw - 1);
             tn.debugWrite("[enter conv forward]");
@@ -148,17 +160,9 @@ module Torch {
                 }
             }
 
-            // Kind of slow when there are many out channels. 
-            // forall (i,j,k) in convs.domain {
-            //     forall c in 0..#inChannels {
-            //         const region = images[i..#kh, j..#kw,c];
-            //         const filter = filters.data[k,..,..,c];
-            //         const conv = region * filter;
-            //         convs[i,j,k] += + reduce conv;
-            //     }
-            // }
             tn.debugWrite("[exit conv forward]\n");
             return new Tensor(convs);
+            */
         }
     
 
@@ -167,82 +171,106 @@ module Torch {
             const (outChannels,kh,kw,inChannels) = filters.shape;
             const (dh,dw,dc) = delta.shape;
 
-            const hMargin = kh / 2;
-            const wMargin = kw / 2;
-
-            const hPadding = h - dh;
-            const wPadding = w - dw;
+            // writeln("backward");
 
             if dc != outChannels then tn.err("Conv backward: outChannels mismatch");
-
             if channels != inChannels then tn.err("Conv backward: inChannels mismatch");
 
-            tn.debugWrite("[enter conv backward]");
+            const dL_dF = tn.filterGradient(images,delta,stride,padding,kh);
+            filtersGrad += dL_dF;
 
-            var dL_dF_Cout_Cin: [0..#outChannels,0..#kh,0..#kw,0..#inChannels] real;
-            forall Cin in 0..#inChannels with (+ reduce dL_dF_Cout_Cin) {
-
-                // var dL_dF_Cout: [0..#outChannels, 0..#kh, 0..#kw] real;
-
-                forall Cout in 0..#outChannels with (+ reduce dL_dF_Cout_Cin) {
-
-                    /* Compute each local filter gradient */
-                    const dL_dY = delta[..,..,Cout];
-                    const X = images[..,..,Cin];
-                    var dL_dF: [0..#kh, 0..#kw] real;
-
-                    // dL_dF[n,m] = sum_i,j dL_dY[i,j] * dY[i,j]_dF[n,m]
-                    // dY[i,j]_dF[n,m] = X[i + n, j + m]
-                    // => dL_dF[n,m] = sum_i,j dL_dY[i,j] * X[i + n, j + m]
-
-                    foreach (m,n) in dL_dF.domain {
-                        // const dYij_dFmn = if X.domain.contains((i + m, j + n)) then X[i + m, j + n] else 0.0;
-                        dL_dF[m,n] = + reduce for (i,j) in dL_dY.domain do 
-                                                dL_dY[i,j] * if X.domain.contains((i + m, j + n)) then X[i + m, j + n] else 0.0;
+            var dL_dX = new Tensor(3,real);
+            dL_dX.reshapeDomain({0..#h, 0..#w, 0..#inChannels});
+            forall (m,n,ci) in {0..#h, 0..#w, 0..#inChannels} with (ref dL_dX) {
+                var sum = 0.0;
+                forall co in 0..#outChannels with (+ reduce sum) {
+                    forall (i,j) in {0..#dh, 0..#dw} with (+ reduce sum) {
+                        const (dXi,dXj) = correlateWeightIdx((kh,kw),(m,n),(i,j),stride,padding);
+                        if dXi != -1 then
+                            sum += delta[i,j,co] * filters[co,dXi,dXj,ci];
                     }
-
-                    // dL_dF_Cout[Cout,..,..] = dL_dF;
-                    dL_dF_Cout_Cin[Cout,..,..,Cin] += dL_dF;
-
                 }
-                // dL_dF_Cout_Cin[..,..,..,Cin] += dL_dF_Cout;
-
+                dL_dX[m,n,ci] = sum;
             }
-            filtersGrad.data += dL_dF_Cout_Cin;
-            tn.debugWrite("[done conv filters backward]");
+            return dL_dX;
 
-            var dL_dX_Cin: [0..#h, 0..#w, 0..#inChannels] real;
+// /* // This works
+//             const hMargin = kh / 2;
+//             const wMargin = kw / 2;
 
-            if this.isFirstLayer {
-                tn.debugWrite("[exit conv input backward]\n");
-                return new Tensor(dL_dX_Cin);
-            }
-            const D = {0..#dh,0..#dw};
-            forall Cin in 0..#inChannels with (+ reduce dL_dX_Cin) {
-                forall Cout in 0..#outChannels with (+ reduce dL_dX_Cin) {
+//             const hPadding = h - dh;
+//             const wPadding = w - dw;
 
-                    // const dL_dY = delta[..,..,Cout];
-                    // const X = images[..,..,Cin];
-                    const F = filters[Cout,..,..,Cin];
-                    var dL_dX: [0..#h, 0..#w] real;
+//             if dc != outChannels then tn.err("Conv backward: outChannels mismatch");
 
-                    // dL_dX[n,m] = sum_i,j dL_dY[i,j] * dY[i,j]_dX[n,m]
-                    // dY[i,j]_dX[n,m] = F[m - i, n - j]
+//             if channels != inChannels then tn.err("Conv backward: inChannels mismatch");
+
+//             tn.debugWrite("[enter conv backward]");
+
+//             var dL_dF_Cout_Cin: [0..#outChannels,0..#kh,0..#kw,0..#inChannels] real;
+//             forall Cin in 0..#inChannels with (+ reduce dL_dF_Cout_Cin) {
+
+//                 // var dL_dF_Cout: [0..#outChannels, 0..#kh, 0..#kw] real;
+
+//                 forall Cout in 0..#outChannels with (+ reduce dL_dF_Cout_Cin) {
+
+//                     /* Compute each local filter gradient */
+//                     const dL_dY = delta[..,..,Cout];
+//                     const X = images[..,..,Cin];
+//                     var dL_dF: [0..#kh, 0..#kw] real;
+
+//                     // dL_dF[n,m] = sum_i,j dL_dY[i,j] * dY[i,j]_dF[n,m]
+//                     // dY[i,j]_dF[n,m] = X[i + n, j + m]
+//                     // => dL_dF[n,m] = sum_i,j dL_dY[i,j] * X[i + n, j + m]
+
+//                     foreach (m,n) in dL_dF.domain {
+//                         // const dYij_dFmn = if X.domain.contains((i + m, j + n)) then X[i + m, j + n] else 0.0;
+//                         dL_dF[m,n] = + reduce for (i,j) in dL_dY.domain do 
+//                                                 dL_dY[i,j] * if X.domain.contains((i + m, j + n)) then X[i + m, j + n] else 0.0;
+//                     }
+
+//                     // dL_dF_Cout[Cout,..,..] = dL_dF;
+//                     dL_dF_Cout_Cin[Cout,..,..,Cin] += dL_dF;
+
+//                 }
+//                 // dL_dF_Cout_Cin[..,..,..,Cin] += dL_dF_Cout;
+
+//             }
+//             filtersGrad.data += dL_dF_Cout_Cin;
+//             tn.debugWrite("[done conv filters backward]");
+
+//             var dL_dX_Cin: [0..#h, 0..#w, 0..#inChannels] real;
+
+//             if this.isFirstLayer {
+//                 tn.debugWrite("[exit conv input backward]\n");
+//                 return new Tensor(dL_dX_Cin);
+//             }
+//             const D = {0..#dh,0..#dw};
+//             forall Cin in 0..#inChannels with (+ reduce dL_dX_Cin) {
+//                 forall Cout in 0..#outChannels with (+ reduce dL_dX_Cin) {
+
+//                     // const dL_dY = delta[..,..,Cout];
+//                     // const X = images[..,..,Cin];
+//                     const F = filters[Cout,..,..,Cin];
+//                     var dL_dX: [0..#h, 0..#w] real;
+
+//                     // dL_dX[n,m] = sum_i,j dL_dY[i,j] * dY[i,j]_dX[n,m]
+//                     // dY[i,j]_dX[n,m] = F[m - i, n - j]
                     
 
-                    foreach (m,n) in dL_dX.domain {
+//                     foreach (m,n) in dL_dX.domain {
 
-                        dL_dX[m,n] = + reduce for (i,j) in D do delta[i,j,Cout] * if F.domain.contains((m - i, n - j)) then F[m - i, n - j] else 0.0;
+//                         dL_dX[m,n] = + reduce for (i,j) in D do delta[i,j,Cout] * if F.domain.contains((m - i, n - j)) then F[m - i, n - j] else 0.0;
 
-                        // dL_dX[m,n] = + reduce for (i,j) in dL_dY.domain do dL_dY[i,j] * if F.domain.contains((m - i, n - j)) then F[m - i, n - j] else 0.0;
-                    }
+//                         // dL_dX[m,n] = + reduce for (i,j) in dL_dY.domain do dL_dY[i,j] * if F.domain.contains((m - i, n - j)) then F[m - i, n - j] else 0.0;
+//                     }
 
-                    dL_dX_Cin[..,..,Cin] += dL_dX;
-                }
-            }
-            tn.debugWrite("[exit conv input backward]\n");
-            return new Tensor(dL_dX_Cin);
- 
+//                     dL_dX_Cin[..,..,Cin] += dL_dX;
+//                 }
+//             }
+//             tn.debugWrite("[exit conv input backward]\n");
+//             return new Tensor(dL_dX_Cin);
+// */
 
 
 

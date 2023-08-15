@@ -48,9 +48,19 @@ import BinaryIO;
 //     )
 // );
 
+// // THIS IS MY BENCHMARK
+// var net = new torch.Network(
+//     (
+//         new torch.Conv(1,8,7),
+//         new torch.Conv(8,12,5),
+//         new torch.MaxPool(),
+//         new torch.SoftMax(10)
+//     )
+// );
+
 var net = new torch.Network(
     (
-        new torch.Conv(1,8,7),
+        new torch.Conv(1,8,4,stride=2),
         new torch.Conv(8,12,5),
         new torch.MaxPool(),
         new torch.SoftMax(10)

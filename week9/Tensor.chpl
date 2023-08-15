@@ -136,7 +136,7 @@ module Tensor {
 
 
         operator =(ref lhs: Tensor(?rank,?eltType), rhs: [?d] eltType) where d.rank == rank {
-            lhs.reshapeDomain(d);
+            lhs._domain = d;
             lhs.data = rhs;
         }
         proc init=(rhs: [?d] eltType) where d.rank == rank {
@@ -178,9 +178,10 @@ module Tensor {
         }
 
 
-        proc _dom do return this._domain;
+        // proc _dom do return this._domain;
 
         forwarding data only this;
+        forwarding data only these;
         // forwarding data only domain;
 
         proc reshapeDomain(d: this._domain.type) do
@@ -638,17 +639,27 @@ module Tensor {
         }
         return t;
     }
+    proc correlateShape(filterShape: 2*int, inputShape: 2*int, stride: int, padding: int) {
+        const (kh,kw) = filterShape;
+        const (nh,nw) = inputShape;
+        if kh != kw then err("Correlation only works with square filters.", kh, " != ", kw);
+        return ((nh - kh + padding + stride) / stride,(nw - kw + padding + stride) / stride);
+
+    }
     proc correlate(const ref filter: Tensor(?), const ref input: Tensor(?), stride: int = 1, padding: int = 0) {
         if padding > 0 then 
             return correlate_(filter,pad(input,padding),stride,padding);
-        return correlate_(filter,input,stride,padding);
+        return correlate_(filter=filter,input=input,stride,padding);
     }
+
     proc correlate_(const ref filter: Tensor(2), const ref input: Tensor(2), stride: int, padding: int): Tensor(2) {
         const (kh,kw) = filter.shape;
         const (nh,nw) = input.shape;
         if kh != kw then err("Correlation only works with square filters.", kh, " != ", kw);
         const (outH,outW): 2*int = ((nh - kh + padding + stride) / stride,(nw - kw + padding + stride) / stride);
-
+        // writeln("correlate_2d input shape: ", input.shape);
+        // writeln("correlate_2d filter shape: ", filter.shape);
+        // writeln("correlate_2d output shape: ",(outH,outW));
         var corr = new Tensor(2,real);
         corr.reshapeDomain({0..#outH,0..#outW});
 
@@ -662,17 +673,6 @@ module Tensor {
 
         return corr;
     }
-    proc correlateWeight(const ref filter: Tensor(2), pIn: 2*int, pOut: 2*int, stride: int = 1, padding: int = 0) {
-        const (m,n) = pIn;
-        const (i,j) = pOut;
-        const diff = (m - (stride * i - padding), n - (stride * j - padding));
-        const (dx,dy) = diff;
-        const (kh,kw) = filter.shape;
-        // if filter.data.domain.contains(diff) then
-        if dx >= 0 && dy >= 0 && dx < kh && dy < kw then
-            return filter[diff];
-        return 0.0;
-    }
 
     proc correlate_(const ref filter: Tensor(3), const ref input: Tensor(3), stride: int, padding: int): Tensor(2) {
         const (kh,kw,cIn) = filter.shape;
@@ -681,6 +681,7 @@ module Tensor {
         if cIn != nc then err("Correlation only works with filters and inputs of the same depth.", cIn, " != ", nc);
 
         const (outH,outW): 2*int = ((nh - kh + padding + stride) / stride,(nw - kw + padding + stride) / stride);
+        // writeln((outH,outW));
 
         var corr = new Tensor(2,real);
         corr.reshapeDomain({0..#outH,0..#outW});
@@ -695,6 +696,10 @@ module Tensor {
 
         return corr;
     }
+    proc dialateShape(filterShape: 2*int, stride: int) {
+        const (kh,kw) = filterShape;
+        return (kh + (stride * (kh - 1)), kw + (stride * (kw - 1)));
+    }
     proc dialate(const ref filter: Tensor(2), stride: int = 1) {
         const (kh,kw) = filter.shape;
         var d = new Tensor(2,real);
@@ -705,11 +710,72 @@ module Tensor {
         }
         return d;
     }
-    proc filterGradient(const ref input: Tensor(2), const ref delta: Tensor(2), stride: int = 1, padding: int = 0) {
-        const d = dialate(delta,stride);
-        return correlate(d,input,stride=1,padding=padding);
+
+    proc dialate(const ref filter: Tensor(3), stride: int = 1) {
+        const (kh,kw,kc) = filter.shape;
+        var d = new Tensor(3,real);
+        const (dh,dw) = (kh + (stride * (kh - 1)), kw + (stride * (kw - 1)));
+        d.reshapeDomain({0..#dh,0..#dw,0..#kc});
+        forall (i,j,c) in filter.data.domain with (ref d) {
+            d[i + i * stride,j + j * stride,c] = filter[i,j,c];
+        }
+        return d;
     }
 
+    proc filterGradient(const ref input: Tensor(2), const ref delta: Tensor(2), stride: int = 1, padding: int = 0) {
+        const d = dialate(delta,stride - 1);
+        return correlate(d,input,stride=1,padding=padding);
+    }
+    proc filterGradient(const ref input: Tensor(3), const ref delta: Tensor(3), stride: int = 1, padding: int = 0,kernelSize: int) {
+        const (inH,inW,inC) = input.shape;
+        const (outH,outW,outC) = delta.shape;
+
+        const (dkh,dkw) = dialateShape((outH,outW),stride - 1);
+        const (kh,kw) = correlateShape((dkh,dkw),(inH,inW),stride=1,padding);
+        // const (kh,kw) = (kernelSize,kernelSize);
+        // writeln("inH: ", inH);
+        // writeln("inW: ", inW);
+        // writeln("inC: ", inC);
+        // writeln("outH: ", outH);
+        // writeln("outW: ", outW);
+        // writeln("outC: ", outC);
+        // writeln("kh: ", kh);
+        // writeln("dialetedShape: ", dialateShape((outH,outW),stride - 1));
+
+        var grad = new Tensor(4,real);
+        grad.reshapeDomain({0..#outC,0..#kh,0..#kw,0..#inC});
+        forall (ci,co) in {0..#inC,0..#outC} with (ref grad, var del = zeros(outH,outW), var img = zeros(inH,inW)) {
+//         for (ci,co) in {0..#inC,0..#outC} {
+// var del = zeros(outH,outW); var img = zeros(inH,inW);
+            del = delta[..,..,co];
+            img = input[..,..,ci];
+            const d = dialate(del,stride - 1);
+            grad[co,..,..,ci] = correlate(d,img,stride=1,padding=padding);
+        }
+        return grad;
+    }
+
+    proc correlateWeight(const ref filter: Tensor(2), pIn: 2*int, pOut: 2*int, stride: int = 1, padding: int = 0) {
+        const (m,n) = pIn;
+        const (i,j) = pOut;
+        const diff = (m - (stride * i - padding), n - (stride * j - padding));
+        const (dx,dy) = diff;
+        const (kh,kw) = filter.shape;
+        // if filter.data.domain.contains(diff) then
+        if dx >= 0 && dy >= 0 && dx < kh && dy < kw then
+            return filter[diff];
+        return 0.0;
+    }
+
+    proc correlateWeightIdx(filterShape: 2*int, pIn: 2*int, pOut: 2*int, stride: int = 1, padding: int = 0) {
+        const (m,n) = pIn;
+        const (i,j) = pOut;
+        const (dx,dy) = (m - (stride * i - padding), n - (stride * j - padding));
+        const (kh,kw) = filterShape;
+        if dx >= 0 && dy >= 0 && dx < kh && dy < kw then
+            return (dx,dy);
+        return (-1,-1);
+    }
 
 
     // proc getCorrelationWeight(const ref filter: Tensor(2), )

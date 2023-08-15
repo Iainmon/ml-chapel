@@ -12,16 +12,14 @@ import Time;
 
 var net = new torch.Network(
     (
-        new torch.Conv(3,8,kernelSize=7),
+        new torch.Conv(3,32,kernelSize=3,stride=2),
+        new torch.Conv(32,64,kernelSize=3,stride=2),
+        // new torch.MaxPool(),
+        new torch.Conv(64,128,kernelSize=3,stride=2),
+        new torch.Conv(128,256,kernelSize=3,stride=2),
         new torch.MaxPool(),
-        new torch.Conv(8,32,kernelSize=5),
-        new torch.MaxPool(),
-        new torch.Conv(32,40,kernelSize=3),
-        new torch.Conv(40,50,kernelSize=3),
-        new torch.MaxPool(),
-        new torch.Conv(50,60,kernelSize=3),
-        new torch.Conv(60,70,kernelSize=3),
-        new torch.MaxPool(),
+        // new torch.Conv(50,60,kernelSize=3),
+        // new torch.Conv(60,70,kernelSize=3),
         new torch.SoftMax(10)
     )
 );
@@ -109,7 +107,7 @@ proc train(data: [] (Tensor(3),int), lr: real = 0.005) {
 config const numImages = 50;
 config const batchSize = 1;
 config const epochs = 20;
-config const learnRate = 0.005;
+config const learnRate = 0.0005;
 
 var trainingData = for (name,im) in Animals10.loadAllIter(numImages) do (im,Animals10.labelIdx(name));
 forall (im,lb) in trainingData {
