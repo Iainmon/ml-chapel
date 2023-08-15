@@ -176,11 +176,11 @@ module Torch {
             tn.debugWrite("[enter conv backward]");
 
             var dL_dF_Cout_Cin: [0..#outChannels,0..#kh,0..#kw,0..#inChannels] real;
-            forall Cin in 0..#inChannels {
+            forall Cin in 0..#inChannels with (+ reduce dL_dF_Cout_Cin) {
 
                 // var dL_dF_Cout: [0..#outChannels, 0..#kh, 0..#kw] real;
 
-                forall Cout in 0..#outChannels {
+                forall Cout in 0..#outChannels with (+ reduce dL_dF_Cout_Cin) {
 
                     /* Compute each local filter gradient */
                     const dL_dY = delta[..,..,Cout];
@@ -213,21 +213,24 @@ module Torch {
                 tn.debugWrite("[exit conv input backward]\n");
                 return new Tensor(dL_dX_Cin);
             }
+            const D = {0..#dh,0..#dw};
+            forall Cin in 0..#inChannels with (+ reduce dL_dX_Cin) {
+                forall Cout in 0..#outChannels with (+ reduce dL_dX_Cin) {
 
-            forall Cin in 0..#inChannels {
-                forall Cout in 0..#outChannels {
-
-                    const dL_dY = delta[..,..,Cout];
+                    // const dL_dY = delta[..,..,Cout];
                     // const X = images[..,..,Cin];
                     const F = filters[Cout,..,..,Cin];
                     var dL_dX: [0..#h, 0..#w] real;
 
                     // dL_dX[n,m] = sum_i,j dL_dY[i,j] * dY[i,j]_dX[n,m]
                     // dY[i,j]_dX[n,m] = F[m - i, n - j]
+                    
 
                     foreach (m,n) in dL_dX.domain {
 
-                        dL_dX[m,n] = + reduce for (i,j) in dL_dY.domain do dL_dY[i,j] * if F.domain.contains((m - i, n - j)) then F[m - i, n - j] else 0.0;
+                        dL_dX[m,n] = + reduce for (i,j) in D do delta[i,j,Cout] * if F.domain.contains((m - i, n - j)) then F[m - i, n - j] else 0.0;
+
+                        // dL_dX[m,n] = + reduce for (i,j) in dL_dY.domain do dL_dY[i,j] * if F.domain.contains((m - i, n - j)) then F[m - i, n - j] else 0.0;
                     }
 
                     dL_dX_Cin[..,..,Cin] += dL_dX;
