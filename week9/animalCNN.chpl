@@ -12,14 +12,15 @@ import Time;
 
 var net = new torch.Network(
     (
-        new torch.Conv(3,6,kernelSize=7),
+        new torch.Conv(3,24,kernelSize=7),
+        new torch.Conv(24,32,kernelSize=5),
         new torch.MaxPool(),
-        new torch.Conv(6,8,kernelSize=5),
+        new torch.Conv(32,40,kernelSize=3),
+        new torch.Conv(40,50,kernelSize=3),
         new torch.MaxPool(),
-        new torch.Conv(8,10,kernelSize=3),
-        new torch.Conv(10,12,kernelSize=3),
+        new torch.Conv(50,60,kernelSize=3),
+        new torch.Conv(60,70,kernelSize=3),
         new torch.MaxPool(),
-
         new torch.SoftMax(10)
     )
 );
