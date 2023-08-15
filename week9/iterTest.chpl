@@ -121,10 +121,19 @@ proc main() {
         var result = tn.correlate(filter,image,stride=1,padding=0);
         writeln(result.shape);
 
-        var t = tn.randn(2,2);
+        var t = tn.zeros(3,3);
+        var x = 1.0;
+        for y in t.data {
+            y = x;
+            x += 1.0;
+        } 
         writeln(t);
         writeln(tn.pad(t,1));
-
+        writeln(t);
+        writeln(tn.dialate(t,2));
+        writeln(tn.filterGradient(tn.randn(5,5),tn.randn(2,2),stride=1,padding=0));
+        writeln(t);
+        writeln(tn.correlateWeight(t,(2,0),(1,0),stride=2,padding=1));
     }
 
 }
