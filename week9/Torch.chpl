@@ -226,7 +226,7 @@ module Torch {
                     // dY[i,j]_dX[n,m] = F[m - i, n - j]
                     
 
-                    foreach (m,n) in dL_dX.domain {
+                    forall (m,n) in dL_dX.domain {
 
                         dL_dX[m,n] = + reduce for (i,j) in D do delta[i,j,Cout] * if F.domain.contains((m - i, n - j)) then F[m - i, n - j] else 0.0;
 

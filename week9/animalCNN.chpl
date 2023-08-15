@@ -151,9 +151,9 @@ for epoch in 0..epochs {
     //     numCorrect += a;
     // }
     writeln(forward(trainingData.first[0],trainingData.first[1]));
-    writeln(train(trainingData.first[0],trainingData.first[1],learnRate));
-    writeln(forward(trainingData.first[0],trainingData.first[1]),trainingData.first[1]);
-    writeln("Hopefully not NAN");
+    //writeln(train(trainingData.first[0],trainingData.first[1],learnRate));
+    //writeln(forward(trainingData.first[0],trainingData.first[1]),trainingData.first[1]);
+    //writeln("Hopefully not NAN");
     // writeln(trainingData.first[0],trainingData.first[1]);
     // halt(0);
 
