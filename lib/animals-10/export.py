@@ -37,17 +37,18 @@ for i, (category,file_path) in enumerate([(k,v) for k,vs in categories.items() f
     img = cv2.imread(file_path)
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
+    img_size = 128
     #resize
     if(img.shape[0] > img.shape[1]):
-        tile_size = (int(img.shape[1]*256/img.shape[0]),256)
+        tile_size = (int(img.shape[1]*img_size/img.shape[0]),img_size)
     else:
-        tile_size = (256, int(img.shape[0]*256/img.shape[1]))
+        tile_size = (img_size, int(img.shape[0]*img_size/img.shape[1]))
 
     #centering
     img = centering_image(cv2.resize(img, dsize=tile_size))
 
     #out put 224*224px 
-    img = img[16:240, 16:240]
+    img = img[16:144, 16:144]
     images.append(img)
     image_categories_idx_map.append(category)
 
@@ -69,6 +70,8 @@ for i in range(total_images):
     img = images[i,:,:,:]
     if category not in consolidated.keys():
         consolidated[category] = []
+    if len(consolidated[category]) > 500:
+        continue
     consolidated[category].append(img)
 
 consolidated = {k: np.array(v) for k,v in consolidated.items()}
