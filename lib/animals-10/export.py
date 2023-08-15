@@ -37,7 +37,7 @@ for i, (category,file_path) in enumerate([(k,v) for k,vs in categories.items() f
     img = cv2.imread(file_path)
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
-    img_size = 128
+    img_size = 256
     #resize
     if(img.shape[0] > img.shape[1]):
         tile_size = (int(img.shape[1]*img_size/img.shape[0]),img_size)
