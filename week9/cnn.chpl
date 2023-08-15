@@ -62,7 +62,7 @@ var net = new torch.Network(
     (
         new torch.Conv(1,8,4,stride=2),
         new torch.Conv(8,12,5),
-        new torch.MaxPool(),
+        // new torch.MaxPool(),
         new torch.SoftMax(10)
     )
 );
