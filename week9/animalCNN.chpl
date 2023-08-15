@@ -16,10 +16,10 @@ var net = new torch.Network(
         new torch.Conv(32,64,kernelSize=3,stride=2),
         // new torch.MaxPool(),
         new torch.Conv(64,128,kernelSize=3,stride=2),
-        new torch.Conv(128,256,kernelSize=3,stride=2),
+        new torch.Conv(128,256,kernelSize=3,stride=1),
                 // new torch.MaxPool(),
 
-        new torch.Conv(256,512,kernelSize=3,stride=2),
+        new torch.Conv(256,512,kernelSize=3,stride=1),
         new torch.Conv(512,1024,kernelSize=3,stride=1),
         new torch.Conv(1024,2048,kernelSize=3,stride=1),
         new torch.MaxPool(),
