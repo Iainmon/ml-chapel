@@ -622,6 +622,74 @@ module Tensor {
     }
 
 
+    proc pad(const ref x: Tensor(2), padding: int) {
+        var t = new Tensor(2,real);
+        const (h,w) = x.shape;
+        t.reshapeDomain({0..#(h + 2 * padding),0..#(w + 2 * padding)});
+        t.data[padding..#h, padding..#w] = x.data;
+        return t;
+    }
+    proc pad(const ref x: Tensor(3), padding: int) {
+        var t = new Tensor(3,real);
+        const (h,w,c) = x.shape;
+        t.reshapeDomain({0..#(h + 2 * padding),0..#(w + 2 * padding),0..#c});
+        forall (i,j,c) in x.data.domain with (ref t) {
+            t[i + padding,j + padding,c] = x[i,j,c];
+        }
+        return t;
+    }
+    proc correlate(const ref filter: Tensor(?), const ref input: Tensor(?), stride: int = 1, padding: int = 0) {
+        if padding > 0 then 
+            return correlate_(filter,pad(input,padding),stride,padding);
+        return correlate_(filter,input,stride,padding);
+    }
+    proc correlate_(const ref filter: Tensor(2), const ref input: Tensor(2), stride: int, padding: int): Tensor(2) {
+        const (kh,kw) = filter.shape;
+        const (nh,nw) = input.shape;
+        if kh != kw then err("Correlation only works with square filters.", kh, " != ", kw);
+        const (outH,outW): 2*int = ((nh - kh + padding + stride) / stride,(nw - kw + padding + stride) / stride);
+
+        var corr = new Tensor(2,real);
+        corr.reshapeDomain({0..#outH,0..#outW});
+
+        forall (x,y) in corr.data.domain with (ref corr) {
+            var sum = 0.0;
+            forall (i,j) in filter.data.domain with (+ reduce sum) {
+                sum += input[x * stride + i, y * stride + j] * filter[i,j];
+            }
+            corr[x,y] = sum;
+        }
+
+        return corr;
+    }
+
+    proc correlate_(const ref filter: Tensor(3), const ref input: Tensor(3), stride: int, padding: int): Tensor(2) {
+        const (kh,kw,cIn) = filter.shape;
+        const (nh,nw,nc) = input.shape;
+        if kh != kw then err("Correlation only works with square filters.", kh, " != ", kw);
+        if cIn != nc then err("Correlation only works with filters and inputs of the same depth.", cIn, " != ", nc);
+
+        const (outH,outW): 2*int = ((nh - kh + padding + stride) / stride,(nw - kw + padding + stride) / stride);
+
+        var corr = new Tensor(2,real);
+        corr.reshapeDomain({0..#outH,0..#outW});
+
+        forall (x,y) in corr.data.domain with (ref corr) {
+            var sum = 0.0;
+            forall (i,j,c) in filter.data.domain with (+ reduce sum) {
+                sum += input[x * stride + i, y * stride + j,c] * filter[i,j,c];
+            }
+            corr[x,y] = sum;
+        }
+
+        return corr;
+    }
+    // proc correlateDelta(pIn: 2*int,pOut: 2*int,const ref filter: Tensor(2), inputDomain: domain(2,int), stride: int = 1, padding: int = 0) {
+    //     const (m,n) = pIn;
+    //     const (x,y) = pOut;
+    //     if filter.domain.contains((m - i, n - j))
+    // }
+
 
 }
 

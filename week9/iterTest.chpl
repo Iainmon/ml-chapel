@@ -1,6 +1,5 @@
 import Tensor as tn;
 use Tensor;
-
 import Time;
 
 proc test(t: Tensor) {
@@ -95,25 +94,37 @@ proc main() {
     //     writeln("time: ", tm);
     // }
 
+    // {
+    //     var m = 100000;
+    //     var n = 130000;
+    //     var p = 200;
+    //     // var t1 = tn.randn(m,n);
+    //     // var t2 = tn.randn(n,p);
+    //     var v = tn.randn(n);
+    //     writeln("done filling.");
+
+
+    //     var st = new Time.stopwatch();
+    //     st.start();
+
+    //     // const M = t1 * t2;
+    //     const w = v * tn.zeros(1,p);
+
+    //     const tm = st.elapsed();
+    //     writeln("out shape: ", w.shape, " ", w.shape);
+    //     writeln("time: ", tm);
+    // }
+
     {
-        var m = 100000;
-        var n = 130000;
-        var p = 200;
-        // var t1 = tn.randn(m,n);
-        // var t2 = tn.randn(n,p);
-        var v = tn.randn(n);
-        writeln("done filling.");
+        var filter = tn.randn(2,2);
+        var image = tn.randn(5,5);
+        var result = tn.correlate(filter,image,stride=1,padding=0);
+        writeln(result.shape);
 
+        var t = tn.randn(2,2);
+        writeln(t);
+        writeln(tn.pad(t,1));
 
-        var st = new Time.stopwatch();
-        st.start();
-
-        // const M = t1 * t2;
-        const w = v * tn.zeros(1,p);
-
-        const tm = st.elapsed();
-        writeln("out shape: ", w.shape, " ", w.shape);
-        writeln("time: ", tm);
     }
 
 }

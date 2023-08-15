@@ -102,14 +102,18 @@ module Torch {
         var filters: Tensor(4);
         var filtersGrad: Tensor(4);
         var isFirstLayer = false;
+        var stride: int = 1;
 
-        proc init(inChannels: int,outChannels: int, kernelSize: int = 3) {
+        proc init(inChannels: int,outChannels: int, kernelSize: int = 3, stride = 1) {
             const numFilters = outChannels;
             this.numFilters = numFilters;
             this.filters = tn.randn(numFilters,kernelSize,kernelSize,inChannels) / (kernelSize:real ** 2.0);
             this.filtersGrad = tn.zeros(numFilters,kernelSize,kernelSize,inChannels);
+            this.stride = stride;
         }
-
+        iter regions(images: Tensor(3)) {
+            
+        }
         iter regions(image: Tensor(2)) {
             const (h,w) = image.shape;
             for i in 0..#(h-2) {
