@@ -49,9 +49,15 @@ tensor: clean
 	echo "Build complete."
 	./build/Tensor
 
+iterTest: clean
+	chpl $(fast_flag) $(my_lib) $(blas_libs)  $(output)/test week9/iterTest.chpl
+	echo "Build complete."
+	./build/test
+	./build/test
+	./build/test
 
 tensorTest: clean
-	chpl $(fast_flag) $(my_lib) $(blas_libs)  $(output)/test week9/test.chpl
+	chpl $(fast_flag) $(my_lib) $(blas_libs)  $(output)/test week8/test.chpl
 	echo "Build complete."
 	./build/test
 

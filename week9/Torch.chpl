@@ -626,6 +626,7 @@ module Torch {
     }
 
     proc forwardPropHelp(ref layers, param n: int, x: Tensor(?)) {
+        // writeln("forwardPropHelp: ", n, " ", x.shape);
         if n == layers.size then return x;
 
         const xNext = layers[n].forwardProp(x);

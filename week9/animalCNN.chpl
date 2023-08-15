@@ -114,6 +114,7 @@ forall (im,lb) in trainingData {
     im.data /= 255.0; // 225.0 ?
     im.data -= 0.5;
 }
+writeln(trainingData.first[0].shape);
 
 // var trainingData = imageData;
 // var imageData = Animals10.loadAll(numImages);

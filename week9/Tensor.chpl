@@ -113,16 +113,79 @@ module Tensor {
             this._domain = d;
             this.data = data;
         }
-        // proc init(shape: int ...?d) {
-        //     this.rank = d;
-        //     this.eltType = real;
-        //     this._domain = {(...shape)};
-        //     this.data = 0.0;
+
+        proc init(itr) where itr.type:string == "promoted expression" || itr.type:string == "iterator" {
+            const A = itr;
+            this.init(A);
+            writeln("init(iter)");
+        }
+
+
+        proc init=(other: Tensor(?rank,?eltType)) {
+            this.rank = other.rank;
+            this.eltType = other.eltType;
+            this._domain = other._domain;
+            this.data = other.data;
+            // writeln("init= called");
+        }
+
+        operator =(ref lhs: Tensor(?rank,?eltType), rhs: Tensor(rank,eltType)) {
+            lhs._domain = rhs._domain;
+            lhs.data = rhs.data;
+        }
+
+
+        operator =(ref lhs: Tensor(?rank,?eltType), rhs: [?d] eltType) where d.rank == rank {
+            lhs.reshapeDomain(d);
+            lhs.data = rhs;
+        }
+        proc init=(rhs: [?d] eltType) where d.rank == rank {
+            this.init(d.rank,eltType);
+            this.reshapeDomain(d);
+            this.data = rhs;
+        }
+        operator :(from: [?d] ?eltType, type toType: Tensor(d.rank,eltType)) {
+            var t: Tensor(d.rank,eltType) = from;
+            return t;
+        }
+
+        // operator =(ref lhs: Tensor(?rank,?eltType), in rhs: ?it) where (isRefIterType(it) || (isArray(rhs) && rhs.eltType == eltType)) && rhs.rank == rank {
+        //     lhs.reshapeDomain(rhs.domain);
+        //     lhs.data = rhs;
         // }
+        // proc init=(in rhs: ?it) where isRefIterType(it) || isArray(rhs) {
+        //     this.init(rank,eltType);
+        //     this.reshapeDomain(rhs.domain);
+        //     this.data = rhs;
+        // }
+        // operator :(in from: ?it, type toType: Tensor(?rank,?eltType)) where (isRefIterType(it) || (isArray(from) && from.eltType == eltType)) && from.rank == rank {
+        //     // compilerError("Cannot convert from ",from.type:string," to ",toType:string);
+        //     var t: Tensor(rank,eltType) = from;
+        //     return t;
+        // }
+
+        operator =(ref lhs: Tensor(?rank,?eltType), itr) where itr.type:string == "promoted expression" || itr.type:string == "iterator" {
+            lhs.reshapeDomain(itr.domain);
+            lhs.data = itr;
+        }
+        proc init=(itr) where itr.type:string == "promoted expression" || itr.type:string == "iterator" {
+            const A = itr;
+            this.init(A);
+        }
+        operator :(itr, type toType: Tensor(?rank,?eltType)) where itr.type:string == "promoted expression" || itr.type:string == "iterator" {
+            var t: Tensor(rank,eltType) = itr;
+            return t;
+        }
+
+
+
 
         forwarding data only this;
         // forwarding data only domain;
 
+        proc reshapeDomain(d: this._domain.type) do
+            this._domain = d;
+        
 
         proc transpose() where rank == 1 {
             const (p,) = shape;
@@ -132,12 +195,21 @@ module Tensor {
         }
         proc transpose() where rank == 2 {
             const (m,n) = this.shape;
-            var M: [0..#n,0..#m] eltType; 
-            forall (i,j) in M.domain {
-                M[i,j] = this.data[j,i];
+            // var M: [0..#n,0..#m] eltType; 
+            // forall (i,j) in M.domain {
+            //     M[i,j] = this.data[j,i];
+            // }
+            // return new Tensor(M);
+            var M = new Tensor(2,eltType);
+            M._domain = {0..#n,0..#m};
+            forall (i,j) in M.data.domain with (ref M, ref this) {
+                M[i,j] = this[j,i];
             }
-            return new Tensor(M);
+            return M;
         }
+
+
+
         proc normalize() {
             const norm = sqrt(frobeniusNormPowTwo(this));
             const data = this.data / norm;
@@ -225,38 +297,101 @@ module Tensor {
         }
     }
 
+    // operator =(ref lhs: Tensor(?rank,?eltType), in rhs) {
+    //     lhs._domain = rhs._domain;
+    //     lhs.data = rhs;
+    // }
 
+    // operator =(ref lhs: Tensor(?rank,?eltType), rhs: [?d] eltType) where d.rank == rank {
+    //     lhs.reshapeDomain(d);
+    //     lhs.data = rhs.data;
+    // }
 
+    // operator =(ref lhs: Tensor(?rank,?eltType), rhs: Tensor(rank,eltType)) {
+    //     lhs._domain = rhs._domain;
+    //     lhs.data = rhs.data;
+    // }
 
-    operator +(lhs: Tensor(?d), rhs: Tensor(d)) {
-        const data = lhs.data + rhs.data;
-        return new Tensor(data);
+    // operator =(ref lhs: Tensor(?rank,?eltType), rhs: Tensor(rank,?t)) {
+    //     lhs._domain = rhs._domain;
+    //     lhs.data = (rhs.data : eltType);
+    // }
+    
+
+    operator +(lhs: Tensor(?rank,?eltType), rhs: Tensor(rank,eltType)) {
+        // Fastest
+        var t = new Tensor(rank=rank,eltType=eltType);
+        t.reshapeDomain(lhs._domain);
+        t.data = lhs.data + rhs.data;
+        return t; // 3.2, 3.2, 4.0
+
+        // return new Tensor(lhs.data + rhs.data); // 4.5, 4.0
+
+        // var t = new Tensor(rank=d,eltType=ty);
+        // t.reshapeDomain(lhs._domain);
+        // t = lhs.data + rhs.data;
+        // return t; // 4.6, 5.0
+
+        // var t = new Tensor(rank=d,eltType=ty);
+        // t.reshapeDomain(lhs._domain);
+        // const data = lhs.data + rhs.data;
+        // t.data = data;
+        // return t; // 4.9, 4.6
+
+        // var t = new Tensor(rank=d,eltType=ty);
+        // const data = lhs.data + rhs.data;
+        // t = data;
+        // return t; // 4.6,4.7
+
+        // var t = new Tensor(rank=d,eltType=ty);
+        // t = lhs.data + rhs.data;
+        // return t; // 4.5,4.6
     }
     operator +=(ref lhs: Tensor(?d), const ref rhs: Tensor(d)) {
         lhs.data += rhs.data;
     }
-    operator -(lhs: Tensor(?d), rhs: Tensor(d)) {
-        const data = lhs.data - rhs.data;
-        return new Tensor(data);
+    operator +=(ref lhs: Tensor(?rank,?eltType), rhs) where (isArray(rhs) && rhs.rank == rank) || rhs.type == eltType {
+        lhs.data += rhs;
+    }
+    operator +=(ref lhs: Tensor(?rank,?eltType), rhs) where rhs.type:string == "promoted expression" || rhs.type:string == "iterator" {
+        lhs.data += rhs;
+    }
+    operator -(lhs: Tensor(?rank,?eltType), rhs: Tensor(rank,eltType)) {
+        var t = new Tensor(rank=rank,eltType=eltType);
+        t.reshapeDomain(lhs._domain);
+        t.data = lhs.data - rhs.data;
+        return t;
     }
     operator -=(ref lhs: Tensor(?d), const ref rhs: Tensor(d)) {
         lhs.data -= rhs.data;
     }
-    operator *(c: ?eltType, rhs: Tensor(?d,eltType)) {
-        const data = c * rhs.data;
-        return new Tensor(data);
+    operator -=(ref lhs: Tensor(?rank,?eltType), rhs) where (isArray(rhs) && rhs.rank == rank) || rhs.type == eltType {
+        lhs.data -= rhs;
     }
-    operator *(rhs: Tensor(?d,?eltType), c: eltType) {
-        const data = c * rhs.data;
-        return new Tensor(data);
+    operator *(c: ?eltType, rhs: Tensor(?rank,eltType)) {
+        var t = new Tensor(rank=rank,eltType=eltType);
+        t.reshapeDomain(rhs._domain);
+        t.data = c * rhs.data;
+        return t;
     }
-    operator *(lhs: Tensor(?d), rhs: Tensor(d)) {
+    operator *(lhs: Tensor(?rank,?eltType), c: eltType) {
+        var t = new Tensor(rank=rank,eltType=eltType);
+        t.reshapeDomain(lhs._domain);
+        t.data = lhs.data * c;
+        return t;
+    }
+    operator *(lhs: Tensor(?rank,?eltType), rhs: Tensor(rank,eltType)) {
         // Hermitian product, not composition
-        const data = lhs.data * rhs.data;
-        return new Tensor(data);
+        var t = new Tensor(rank=rank,eltType=eltType);
+        t.reshapeDomain(lhs._domain);
+        t.data = lhs.data * rhs.data;
+        return t;
     }
     operator *=(ref lhs: Tensor(?d), const ref rhs: Tensor(d)) {
         lhs.data *= rhs.data;
+    }
+    operator *=(ref lhs: Tensor(?rank,?eltType), rhs) where (isArray(rhs) && rhs.rank == rank) || rhs.type == eltType {
+        lhs.data *= rhs;
     }
 
     operator *(lhs: Tensor(2,?eltType), rhs: Tensor(1,eltType)): Tensor(1,eltType) {
@@ -264,28 +399,71 @@ module Tensor {
         const (p,) = rhs.shape;
         if n != p then
             err("Trying to apply a matrix of shape ",lhs.shape, " to a vector of shape ", rhs.shape);
+        
+        // const a = lhs.data;
+        // const v = rhs.data;
+        // var w: [0..#m] eltType;
+        // forall i in 0..#m {
+        //     const row = a[i,..];
+        //     w[i] = + reduce (row * v);
+        // }
+        // return new Tensor(w); // .3, .5, .3
+
+
         const a = lhs.data;
         const v = rhs.data;
-        var w: [0..#m] eltType;
-        forall i in 0..#m {
+        var w = new Tensor(rank=1,eltType=eltType);
+        w.reshapeDomain({0..#m});
+        forall i in 0..#m with (ref w) {
             const row = a[i,..];
             w[i] = + reduce (row * v);
         }
-        return new Tensor(w);
+        return w;
+
+        // var w = new Tensor(rank=1,eltType=eltType);
+        // w.reshapeDomain({0..#m});
+        // forall i in 0..#n with (ref w) {
+        //     var ci = 0.0;
+        //     forall k in 0..#m with (+ reduce ci) {
+        //         ci += lhs[k,i] * rhs[k];
+        //     }
+        //     w[i] = ci;
+        // } // .4, .3, .4
+
+        // var w = new Tensor(rank=1,eltType=eltType);
+        // w.reshapeDomain({0..#m});
+        // forall i in 0..#n with (+ reduce w) {
+        //     w += lhs[..,i] * rhs.data;
+        // } // .2, .3, .3
+
+        // const v = rhs.data;
+        // foreach i in 0..#m {
+        //     w[i] = + reduce (lhs[i,..] * v);
+        // } // .8, .7, .8
+
+        //return w;
     }
+
     operator *(lhs: Tensor(1,?eltType), rhs: Tensor(2,eltType)): Tensor(2,eltType) {
         const (p,) = lhs.shape;
         const (m,n) = rhs.shape;
         if m != 1 then
             err("Trying to apply a vector of shape ",lhs.shape, " to a matrix of shape ", rhs.shape);
         
-        const a = rhs.data;
-        const v = lhs.data;
-        var b: [0..#p, 0..#n] eltType;
-        forall (i,j) in b.domain {
-            b[i,j] = v[i] * a[0,j];
+        // const a = rhs.data;
+        // const v = lhs.data;
+        // var b: [0..#p, 0..#n] eltType;
+        // forall (i,j) in b.domain {
+        //     b[i,j] = v[i] * a[0,j];
+        // }
+        // return new Tensor(b); // .4, .4, .2
+
+        var b = new Tensor(rank=2,eltType=eltType);
+        b.reshapeDomain({0..#p, 0..#n});
+        foreach (i,j) in {0..#p, 0..#n} {
+            b[i,j] = lhs[i] * rhs[0,j];
         }
-        return new Tensor(b);
+        return b; 
     }
 
     operator /(lhs: Tensor(?d,?eltType), c: eltType) {
@@ -337,6 +515,9 @@ module Tensor {
         forall i in data.domain do
             data[i] = Math.exp(t.data[i]);
         return new Tensor(data);
+        // var t = new Tensor(rank=d,eltType=real);
+        // t.data = [x in t.data] Math.exp(x);
+        // return t;
     }
 
     proc argmax(A: [?d] real) where d.rank == 1 {
