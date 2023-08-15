@@ -22,7 +22,7 @@ var net = new torch.Network(
         new torch.Conv(256,512,kernelSize=3,stride=2),
         new torch.Conv(512,1024,kernelSize=3,stride=2),
         new torch.Conv(1024,2048,kernelSize=3,stride=2),
-        // new torch.MaxPool(),
+        new torch.MaxPool(),
         // new torch.Conv(50,60,kernelSize=3),
         // new torch.Conv(60,70,kernelSize=3),
         new torch.SoftMax(10)
