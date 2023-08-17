@@ -20,7 +20,7 @@ module Chai {
 
         var uninitialized = true;
 
-        // type gradientType = (Tensor(1),Tensor(2));
+        type gradientType = (Tensor(2),Tensor(1));
 
 
         proc init(outputSize: int) {
@@ -49,10 +49,22 @@ module Chai {
             return activation;
         }
 
+        proc initialGradient(): this.gradientType {
+            return (tn.zeros((...weights.shape)),tn.zeros((...bias.shape)));
+        }
+
         proc backward(delta: Tensor(1), input: Tensor(1)): Tensor(1) {
             const newDelta = weights.transpose() * delta;
             biasGrad    += newDelta;
             weightsGrad += newDelta * input.transpose();
+            return newDelta;
+        }
+        proc backward(delta: Tensor(1), input: Tensor(1), ref myGradient: this.gradientType): Tensor(1) {
+            const newDelta = weights.transpose() * delta;
+
+            myGradient[0] += newDelta * input.transpose();
+            myGradient[1] += newDelta;
+
             return newDelta;
         }
 
@@ -60,6 +72,12 @@ module Chai {
             bias -= mag * biasGrad;
             weights -= mag * weightsGrad;
         }
+
+        proc optimize(mag: real, ref myGradient: this.gradientType) {
+            bias -= mag * myGradient[1];
+            weights -= mag * myGradient[0];
+        }
+
         proc resetGradients() {
             biasGrad.data = 0;
             weightsGrad.data = 0;
@@ -109,6 +127,8 @@ module Chai {
         var stride: int = 1;
         var padding: int = 0;
 
+        type gradientType = Tensor(4);
+
         proc init(inChannels: int,outChannels: int, kernelSize: int = 3, stride: int = 1, padding: int = 0) {
             const numFilters = outChannels;
             this.numFilters = numFilters;
@@ -123,17 +143,9 @@ module Chai {
             this.stride = stride;
             this.padding = padding;
         }
-        iter regions(images: Tensor(3)) {
 
-        }
-        iter regions(image: Tensor(2)) {
-            const (h,w) = image.shape;
-            for i in 0..#(h-2) {
-                for j in 0..#(w-2) {
-                    var region = image[i..i+3, j..j+3];
-                    yield (region,i,j);
-                }
-            }
+        proc initialGradient(): this.gradientType {
+            return tn.zeros((...filters.shape));
         }
 
         proc forwardProp(images: Tensor(3)): Tensor(3) {
@@ -187,8 +199,39 @@ module Chai {
             return dL_dX;
         }
         
+        proc backward(delta: Tensor(3), images: Tensor(3),ref myGradient: this.gradientType): Tensor(3) {
+            const (h,w,channels) = images.shape;
+            const (outChannels,kh,kw,inChannels) = filters.shape;
+            const (dh,dw,dc) = delta.shape;
+
+
+            if dc != outChannels then tn.err("Conv backward: outChannels mismatch");
+            if channels != inChannels then tn.err("Conv backward: inChannels mismatch");
+
+            const dL_dF = tn.filterGradient(images,delta,stride,padding,kh);
+            myGradient += dL_dF;
+
+            var dL_dX = new Tensor(3,real);
+            dL_dX.reshapeDomain({0..#h, 0..#w, 0..#inChannels});
+            forall (m,n,ci) in {0..#h, 0..#w, 0..#inChannels} with (ref dL_dX) {
+                var sum = 0.0;
+                forall co in 0..#outChannels with (+ reduce sum) {
+                    forall (i,j) in {0..#dh, 0..#dw} with (+ reduce sum) {
+                        const (dXi,dXj) = correlateWeightIdx((kh,kw),(m,n),(i,j),stride,padding);
+                        if dXi != -1 then
+                            sum += delta[i,j,co] * filters[co,dXi,dXj,ci];
+                    }
+                }
+                dL_dX[m,n,ci] = sum;
+            }
+            return dL_dX;
+        }
+        
         proc optimize(mag: real(64)) {
             filters -= mag * filtersGrad;
+        }
+        proc optimize(mag: real, ref myGradient: this.gradientType) {
+            filters -= mag * myGradient;
         }
 
         proc resetGradients() {
@@ -208,6 +251,12 @@ module Chai {
     }
 
     record MaxPool {
+
+        type gradientType = nothing;
+
+        proc initialGradient(): this.gradientType {
+            return none;
+        }
 
         iter regions(convs: Tensor(3)) {
             const (h,w,numFilters) = convs.shape;
@@ -277,8 +326,25 @@ module Chai {
 
             return output;
         }
+        proc backward(delta: Tensor(3), convs: Tensor(3), ref myGradient: this.gradientType): Tensor(3) {
+            const (h,w,numFilters) = convs.shape;
+
+            const newH: int = h / 2;
+            const newW: int = w / 2;
+
+            var grad: [0..#h, 0..#w, 0..#numFilters] real;
+            forall (i,j,k) in delta.data.domain {
+                const region = convs[i*2..#2, j*2..#2, k];
+                const (maxI,maxJ) = argmax(region);
+                grad[i*2+maxI,j*2+maxJ,k] = delta[i,j,k];
+            }
+            const output = new Tensor(grad);
+
+            return output;
+        }
 
         proc optimize(mag: real(64)) { }
+        proc optimize(mag: real, ref myGradient: this.gradientType) { }
         proc resetGradients() { }
 
         proc write(fw: IO.fileWriter) throws {
@@ -340,6 +406,8 @@ module Chai {
         var uninitialized: bool = true;
         var outputSize: int = 0;
 
+        type gradientType = (Tensor(2),Tensor(1));
+
         proc init(inputLength: int, nodes: int) {
             weights = tn.randn(nodes,inputLength);// / inputLength;
             biases = tn.randn(nodes);
@@ -351,6 +419,10 @@ module Chai {
 
         proc init(outputSize: int) {
             this.outputSize = outputSize;
+        }
+
+        proc initialGradient(): this.gradientType {
+            return (tn.zeros((...weights.shape)),tn.zeros((...biases.shape)));
         }
 
 
@@ -418,9 +490,51 @@ module Chai {
             return dL_dIn.reshape(input.domain);
         }
 
+        proc backward(delta: Tensor(1), input: Tensor(?outRank), ref myGradient: this.gradientType): Tensor(outRank) {
+            const flattened = input.flatten();
+            const Z = (weights * flattened) + biases;
+            const (exp,expSum,softmax) = tn.softmaxParts(Z);
+            // const exp = tn.exp(Z);
+            // const expSum = + reduce exp.data;
+            // const softmax = exp / expSum;
+            const dL_dOut = delta;
+
+
+            var nonZeroIdx: int = -1;
+            for i in delta.data.domain do
+                if delta[i] != 0.0 { nonZeroIdx = i; break; }
+            
+            if nonZeroIdx == -1 then tn.err("Softmax backward: delta is zero vector");
+            const i = nonZeroIdx;
+
+            var dOut_dZ: Tensor(1) = (- exp[i]) * (exp / (expSum ** 2.0));
+            dOut_dZ[i] = exp[i] * (expSum - exp[i]) / (expSum ** 2.0);
+            
+
+            const dZ_dW: Tensor(1) = flattened;
+            const dZ_dB: real = 1;
+            const dZ_dIn: Tensor(2) = weights;
+
+            const dL_dZ: Tensor(1) = dL_dOut[i] * dOut_dZ;
+
+            const dL_dW: Tensor(2) = dL_dZ * dZ_dW.transpose(); // This should be dL_dW * dL_dZ.transpose();
+            const dL_dB: Tensor(1) = dL_dZ * dZ_dB;
+            const dL_dIn: Tensor(1) = dZ_dIn.transpose() * dL_dZ; // this is the problem
+
+
+            myGradient[0] += dL_dW; // this might need to be dL_dW.transpose(), along with line 363 alternative
+            myGradient[1] += dL_dB;
+
+            return dL_dIn.reshape(input.domain);
+        }
+
         proc optimize(mag: real(64)) {
             weights.data -= mag * weightsGrad.data;
             biases.data -= mag * biasesGrad.data;
+        }
+        proc optimize(mag: real, ref myGradient: this.gradientType) {
+            weights.data -= mag * myGradient[0].data;
+            biases.data -= mag * myGradient[1].data;
         }
         proc resetGradients() {
             weightsGrad.data = 0.0;
@@ -458,7 +572,7 @@ module Chai {
         return backwardPropHelp(layers, n-1, xNext);
     }
 
-    proc backwardForwardPropHelp(ref layers, param n: int, : Tensor(?), lastDelta: Tensor(?)) {
+    proc backwardForwardPropHelp(ref layers, param n: int,x : Tensor(?), lastDelta: Tensor(?)) {
 
         if n == layers.size - 1 {
             return layers[n].backward(lastDelta,x);
@@ -472,14 +586,49 @@ module Chai {
         return layers[n].backward(backwardForwardPropHelp(layers, n + 1, layers[n].forwardProp(x), lastDelta),x);
     }
 
+    proc backwardForwardPropHelpGradRef(ref layers,ref layerGrads, param n: int,x : Tensor(?), lastDelta: Tensor(?)) {
+
+        ref layerGradient: layers[n].gradientType = layerGrads[n];
+
+        if n == layers.size - 1 {
+            return layers[n].backward(lastDelta,layerGradient,x);
+        }
+
+        // const lastInput = layers[n].forwardProp(x);
+        // const delta = backwardForwardPropHelp(layers, n+1, lastInput, lastDelta);
+        // return layers[n].backward(delta,x);
+
+        // Better? 
+        const lastInput = layers[n].forwardProp(x);
+        const delta = backwardForwardPropHelpGradRef(layers,layerGrads, n + 1, lastInput, lastDelta);
+        return layers[n].backward(delta,x,layerGradient);
+    }
+
+    proc tupleTypeBuilder(ref layers, param n: int) {
+        if n == layers.size - 1 then return (layers[n].gradientType,);
+        return (layers[n].gradientType, (...tupleTypeBuilder(layers,n+1)));
+    }
+
     record Network {
         var layers;
+
+        proc gradientType {
+            return (...tupleTypeBuilder(layers,0));
+        }
 
         proc init(layers) {
             this.layers = layers;
             if Reflection.hasField(this.layers[0].type, "isFirstLayer") {
                 this.layers[0].isFirstLayer = true;
             }
+        }
+
+        proc initialGradient() {
+            var grads: this.gradientType;
+            forall i in 0..#(layers.size) {
+                grads[i] = layers[i].initialGradient();
+            }
+            return grads;
         }
 
         proc forwardProp(x: Tensor(?)) {
@@ -492,6 +641,17 @@ module Chai {
         }
         proc backwardProp(x: Tensor(?), delta: Tensor(?)) {
             return backwardForwardPropHelp(this.layers,0,x,delta);
+        }
+
+        proc backwardProp(x: Tensor(?), delta: Tensor(?), ref layerGrads: this.gradientType) {
+            return backwardForwardPropHelpGradRef(layers,layerGrads,0,x,delta);
+        }
+
+        proc optimize(mag: real, ref layerGrads: this.gradientType) {
+            forall i in 0..#(layers.size) with (ref this) {
+                ref layerGradient = layerGrads[i];
+                layers[i].optimize(mag,layerGradient);
+            }
         }
 
         proc optimize(mag: real) {

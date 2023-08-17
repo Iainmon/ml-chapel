@@ -23,7 +23,10 @@ else
 	fast_flag = --baseline
 endif
 
-
+animalCNNTest: clean
+	chpl $(fast_flag) $(my_lib) -M ml-study/lib $(blas_libs)  $(output)/animalCNNTest ml-study/correctness/animalCNN.chpl
+	echo "Build complete."
+	./build/animalCNNTest
 
 torch: clean
 	chpl $(fast_flag) $(my_lib) $(blas_libs)  $(output)/Torch week9/Torch.chpl
