@@ -74,21 +74,16 @@ proc forward(x: Tensor(?), lb: int) {
 }
 
 
-proc train(data: [] (Tensor(3),int), lr: real = 0.005) {
-    // writeln("Training on ",data.domain.size," images");
-    const size = data.domain.size;
+proc train(batch: [] (Tensor(3),int), lr: real = 0.005) {
 
     var loss = 0.0;
     var acc = 0;
 
     net.resetGradients();
-    forall ((im,lb),i) in zip(data,0..) with (ref net,+ reduce loss, + reduce acc) {
+    forall ((im,lb),i) in zip(batch,0..) with (ref net,+ reduce loss, + reduce acc) {
         const (output,l,a) = forward(im,lb);
         var gradient = tn.zeros(numLabels);
-        // if output[lb] == 0.0 {
-        //     writeln("Output is 0.0");
-        //     halt(1);
-        // }
+
         const g = -1.0 / output[lb];
         if AutoMath.isnan(g) || AutoMath.isinf(g) {
             writeln("Gradient is ",g);
@@ -104,7 +99,8 @@ proc train(data: [] (Tensor(3),int), lr: real = 0.005) {
         acc += if a then 1 else 0;
     }
 
-    net.optimize(lr);
+    const batchSize = batch.domain.size;
+    net.optimize(lr / batchSize);
 
     return (loss,acc);
 }
