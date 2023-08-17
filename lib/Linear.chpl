@@ -494,7 +494,8 @@ proc random(m: int, n: int, type eltType=real(64)) {
     return new Matrix(A);
 }
 
-
+// mu : mean
+// sigma : standard deviation
 proc boxMuller(mu: real, sigma: real) {
     var u1 = rng.getNext();
     var u2 = rng.getNext();

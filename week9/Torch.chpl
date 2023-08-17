@@ -11,45 +11,55 @@ module Torch {
     
 
     record Dense {
+
+        var outputSize: int;
+
         var bias: Tensor(1);
         var weights: Tensor(2);
 
         var biasGrad: Tensor(1);
         var weightsGrad: Tensor(2);
 
-        var lastInput: Tensor(1);
-        var lastOutput: Tensor(1);
+        var uninitialized = true;
 
 
-        proc init(inputSize: int, outputSize: int) {
-            bias = tn.randn(outputSize);
-            weights = tn.randn(outputSize, inputSize);
+        proc init(outputSize: int) {
+            this.outputSize = outputSize;
 
-            biasGrad = tn.zeros(outputSize);
-            weightsGrad = tn.zeros(outputSize, inputSize);
+            bias = new Tensor(1,real); // tn.randn(outputSize);
+            weights = new Tensor(2,real); // tn.randn(outputSize, inputSize);
 
-            lastInput = tn.zeros(inputSize);
-            lastOutput = tn.zeros(outputSize);
+            biasGrad = new Tensor(1,real);
+            weightsGrad = new Tensor(2,real);
         }
 
-        proc forwardProp(x: Tensor(1)): Tensor(1) {
-            // lastInput = x;
-            const activation = (weights * x) + bias;
-            // lastOutput = activation;
+        proc forwardProp(input: Tensor(1)): Tensor(1) {
+            if uninitialized {
+                const inputSize = * reduce input.shape;
+                const stddevB = sqrt(2.0 / outputSize);
+                const stddevW = sqrt(2.0 / (inputSize + outputSize));
+                bias = tn.zeros(outputSize); // tn.randn(outputSize,mu=0.0,sigma=stddevB);
+                weights = tn.randn(outputSize, inputSize,mu=0.0,sigma=stddevW);
+
+                biasGrad = tn.zeros(outputSize);
+                weightsGrad = tn.zeros(outputSize, inputSize);
+                uninitialized = false;
+            }
+            const activation = (weights * input) + bias;
             return activation;
         }
 
-        proc backward(delta: Tensor(1)): Tensor(1) {
-            const newDelta = weights.transpose() * delta;
-            biasGrad    = newDelta;
-            weightsGrad = newDelta * lastInput.transpose();
-            return newDelta;
-        }
+        // proc backward(delta: Tensor(1)): Tensor(1) {
+        //     const newDelta = weights.transpose() * delta;
+        //     biasGrad    = newDelta;
+        //     weightsGrad = newDelta * lastInput.transpose();
+        //     return newDelta;
+        // }
 
-        proc backward(delta: Tensor(1),lastInput: Tensor(1)): Tensor(1) {
+        proc backward(delta: Tensor(1), input: Tensor(1)): Tensor(1) {
             const newDelta = weights.transpose() * delta;
             biasGrad    += newDelta;
-            weightsGrad += newDelta * lastInput.transpose();
+            weightsGrad += newDelta * input.transpose();
             return newDelta;
         }
 
@@ -69,6 +79,7 @@ module Torch {
         proc read(fr: IO.fileReader) throws {
             bias.read(fr);
             weights.read(fr);
+            uninitialized = false;
         }
     }
 
@@ -108,7 +119,13 @@ module Torch {
         proc init(inChannels: int,outChannels: int, kernelSize: int = 3, stride: int = 1, padding: int = 0) {
             const numFilters = outChannels;
             this.numFilters = numFilters;
-            this.filters = tn.randn(numFilters,kernelSize,kernelSize,inChannels) / (kernelSize:real ** 2.0);
+
+            const fanIn = kernelSize * kernelSize * inChannels;
+            const fanOut = outChannels;
+            const stddev = sqrt(2.0 / (fanOut + fanIn));
+            this.filters = tn.randn(outChannels,kernelSize,kernelSize,inChannels,mu=0.0,sigma=stddev);
+            // this.filters = tn.randn(numFilters,kernelSize,kernelSize,inChannels) / (kernelSize:real ** 2.0);
+            
             this.filtersGrad = tn.zeros(numFilters,kernelSize,kernelSize,inChannels);
             this.stride = stride;
             this.padding = padding;
@@ -143,6 +160,8 @@ module Torch {
                 filter.data = filters[f,..,..,..];
                 convs[..,..,f] = correlate(filter=filter,input=images,stride=stride,padding=padding);
             }
+            // convs = tn.relu(convs);
+            convs.data /= (inChannels:real);
             return convs;
             
             /* // this works
@@ -407,7 +426,10 @@ module Torch {
         }
 
         proc optimize(mag: real(64)) {
+            const (outChannels,kh,kw,inChannels) = filters.shape;
+            // filters -= (mag / (inChannels:real)) * filtersGrad;
             filters -= mag * filtersGrad;
+
         }
         proc resetGradients() {
             filtersGrad.data = 0.0;
@@ -536,6 +558,60 @@ module Torch {
         proc read(fr: IO.fileReader) throws { }
     }
 
+    record ReLU {
+        var a: real = 0.0;
+        proc init(a: real = 0.0) { this.a = a; }
+        proc forwardProp(input: Tensor(?rank)) {
+            var output = new Tensor(rank,real);
+            output.reshapeDomain(input.domain);
+            foreach i in output.domain {
+                const y = input.data[i];
+                output.data[i] = max(y,a * y);
+            }
+            return output;
+        }
+        proc backward(delta: Tensor(?rank),input: Tensor(rank)) {
+            var output = new Tensor(rank,real);
+            output.reshapeDomain(input.domain);
+            foreach i in output.domain {
+                const y = input.data[i];
+                const dy = delta.data[i];
+                output.data[i] = if y > 0.0 then dy else a * dy;
+            }
+            return output;
+        }
+        proc optimize(mag: real(64)) { }
+        proc resetGradients() { }
+        proc write(fw: IO.fileWriter) throws { }
+        proc read(fr: IO.fileReader) throws { }
+    }
+
+    record Flatten {
+        // param rank: int;
+        // var _domain: domain(rank,int);
+        // var uninitialized = true;
+
+        // proc init(param rank: int) {
+        //     this.rank = rank;
+        //     this._domain = tn.emptyDomain(rank);
+        // }
+        proc init() { }
+        proc forwardProp(input: Tensor(?inRank)): Tensor(1) {
+            // if uninitialized {
+            //     _domain = input.domain;
+            //     uninitialized = false;
+            // }
+            return input.flatten();
+        }
+        proc backward(delta: Tensor(1), input: Tensor(?inRank)): Tensor(inRank) {
+            return delta.reshape(input.domain);
+        }
+        proc optimize(mag: real(64)) { }
+        proc resetGradients() { }
+        proc write(fw: IO.fileWriter) throws { }
+        proc read(fr: IO.fileReader) throws { }
+    }
+
     record SoftMax {
 
         var weights: Tensor(2);
@@ -561,38 +637,42 @@ module Torch {
         }
 
 
-        proc forwardProp(convs: Tensor(3)): Tensor(1) {
+        proc forwardProp(input: Tensor(?)): Tensor(1) {
             tn.debugWrite("[enter softmax forward]");
 
             if uninitialized {
-                const inputLength = * reduce convs.shape;
-                if inputLength < 1 then tn.err("Softmax input size must be > 0");
+                const inputSize = * reduce input.shape;
+                if inputSize < 1 then tn.err("Softmax input size must be > 0");
 
-                weights = tn.randn(outputSize,inputLength) / (inputLength: real);
-                biases = tn.zeros(outputSize);
+                const stddev = sqrt(2.0 / (inputSize + outputSize));
+                // weights = tn.randn(outputSize,inputSize,mu=0.0,sigma=stddev);
+                weights = tn.randn(outputSize,inputSize) / (inputSize: real);
+                biases = tn.zeros(outputSize);// tn.randn(outputSize) / (outputSize: real);
 
-                weightsGrad = tn.zeros(outputSize,inputLength);
+                weightsGrad = tn.zeros(outputSize,inputSize);
                 biasesGrad = tn.zeros(outputSize);
 
                 uninitialized = false;
             }
 
-            const flattened = convs.flatten();
+            const flattened = input.flatten();
             const z = (weights * flattened) + biases;
-            const exp = tn.exp(z);
-            const expSum = + reduce exp.data;
+            return tn.softmax(z);
+            // const exp = tn.exp(z);
+            // const expSum = + reduce exp.data;
 
-            tn.debugWrite("[exit softmax forward]\n");
+            // tn.debugWrite("[exit softmax forward]\n");
 
-            return exp / expSum;
+            // return exp / expSum;
         }
 
-        proc backward(delta: Tensor(1), convs: Tensor(3)): Tensor(3) {
-            const flattened = convs.flatten();
+        proc backward(delta: Tensor(1), input: Tensor(?outRank)): Tensor(outRank) {
+            const flattened = input.flatten();
             const Z = (weights * flattened) + biases;
-            const exp = tn.exp(Z);
-            const expSum = + reduce exp.data;
-            const softmax = exp / expSum;
+            const (exp,expSum,softmax) = tn.softmaxParts(Z);
+            // const exp = tn.exp(Z);
+            // const expSum = + reduce exp.data;
+            // const softmax = exp / expSum;
             const dL_dOut = delta;
 
 
@@ -624,8 +704,8 @@ module Torch {
             // writeln("dL_dIn: ", dL_dIn.shape);
             biasesGrad += dL_dB;
 
-            return dL_dIn.reshape((...convs.shape));
-
+            // return dL_dIn.reshape((...input.shape));
+            return dL_dIn.reshape(input.domain);
 
 
             // const (m,n) = weights.shape;
@@ -659,6 +739,7 @@ module Torch {
         }
 
     }
+
 
     proc forwardPropHelp(ref layers, param n: int, x: Tensor(?)) {
         // writeln("forwardPropHelp: ", n, " ", x.shape);

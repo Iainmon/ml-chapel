@@ -5,6 +5,7 @@ module Tensor {
     import IO;
     import IO.FormattedIO;
     import ChapelArray;
+    import Random;
 
     param debugPrint = false;
 
@@ -41,7 +42,11 @@ module Tensor {
         }
     }
 
-
+    proc emptyDomain(param rank: int): domain(rank,int) {
+        var d: rank*range;
+        for r in d do r = 0..#0;
+        return {(...d)};
+    }
 
     proc domainFromShape(shape: int ...?d): domain(d,int) {
         var ranges: d*range;
@@ -69,7 +74,11 @@ module Tensor {
         }
         return filled;
     }
-    
+    proc domainType(param rank: int) type {
+        type ty = domain(rank,int);
+        return ty;
+    }
+
     record Tensor {
         param rank: int;
         type eltType = real(64);
@@ -79,27 +88,6 @@ module Tensor {
 
         proc shape do return this._domain.shape;
 
-        proc init(type eltType, shape: int ...?dim) {
-            this.rank = dim ;
-            this.eltType = eltType;
-            var ranges: dim*range;
-            for (size,r) in zip(shape,ranges) do r = 0..#size;
-            this._domain = {(...ranges)};
-        }
-        // proc init(type eltType, shape: int ...?dim) {
-        //     this.rank = dim ;
-        //     this.eltType = eltType;
-        //     var ranges: dim*range;
-        //     for (size,r) in zip(shape,ranges) do r = 0..#size;
-        //     this._domain = {(...ranges)};
-        // }
-        proc init(shape: int ...?dim) {
-            this.rank = dim ;
-            this.eltType = real;
-            var ranges: dim*range;
-            for (size,r) in zip(shape,ranges) do r = 0..#size;
-            this._domain = {(...ranges)};
-        }
         proc init(param rank: int, type eltType) {
             this.rank = rank;
             this.eltType = eltType;
@@ -107,11 +95,30 @@ module Tensor {
             for r in ranges do r = 0..#0;
             this._domain = {(...ranges)};
         }
+        proc init(type eltType, shape: int ...?dim) {
+            this.rank = dim ;
+            this.eltType = eltType;
+            var ranges: dim*range;
+            for (size,r) in zip(shape,ranges) do r = 0..#size;
+            this._domain = {(...ranges)};
+        }
+        proc init(shape: int ...?dim) {
+            this.rank = dim ;
+            this.eltType = real;
+            var ranges: dim*range;
+            for (size,r) in zip(shape,ranges) do r = 0..#size;
+            this._domain = {(...ranges)};
+        }
         proc init(data: [?d] ?eltType) {
             this.rank = d.rank;
             this.eltType = eltType;
             this._domain = d;
             this.data = data;
+        }
+        proc init(dom: ?d) where isDomainType(d) {
+            this.rank = dom.rank;
+            this.eltType = real;
+            this._domain = dom;
         }
 
         proc init(itr) where itr.type:string == "promoted expression" || itr.type:string == "iterator" {
@@ -178,7 +185,7 @@ module Tensor {
         }
 
 
-        // proc _dom do return this._domain;
+        proc _dom do return this._domain;
 
         forwarding data only this;
         forwarding data only these;
@@ -196,15 +203,10 @@ module Tensor {
         }
         proc transpose() where rank == 2 {
             const (m,n) = this.shape;
-            // var M: [0..#n,0..#m] eltType; 
-            // forall (i,j) in M.domain {
-            //     M[i,j] = this.data[j,i];
-            // }
-            // return new Tensor(M);
             var M = new Tensor(2,eltType);
-            M._domain = {0..#n,0..#m};
-            forall (i,j) in M.data.domain with (ref M, ref this) {
-                M[i,j] = this[j,i];
+            M.reshapeDomain({0..#n,0..#m});
+            foreach (i,j) in M.domain {
+                M.data[i,j] = this.data[j,i];
             }
             return M;
         }
@@ -215,28 +217,30 @@ module Tensor {
             const norm = sqrt(frobeniusNormPowTwo(this));
             const data = this.data / norm;
             return new Tensor(data);
+        }
 
+        proc reshape(dom) {
+            var t = new Tensor(dom.rank,eltType);
+            t.reshapeDomain(dom);
+            t.data = for (i,a) in zip(t.domain,this.data) do a;
+            return t;
         }
 
         proc flatten() {
             const size = this.data.domain.size;
-            const flatD = {0..#size};
-            // const v = ChapelArray.reshape(this.data,flatD);
-            const v = for (i,a) in zip(flatD,this.data) do a;
-            return new Tensor(v);
+            return this.reshape({0..#size});
         }
 
         proc reshape(shape: int ...?d) {
             const dom = domainFromShape((...shape));
-            // const data = ChapelArray.reshape(this.data,dom);
-            const data = for (i,a) in zip(dom,this.data) do a;
-            return new Tensor(data);
+            return this.reshape(dom);            
         }
 
-        
         proc fmap(fn) {
-            const data = fn(this.data);
-            return new Tensor(data);
+            var t = new Tensor(rank,eltType);
+            t.reshapeDomain(this.domain);
+            t.data = fn(this.data);
+            return t;
         }
         
         proc writeThis(fw: IO.fileWriter) throws {
@@ -481,12 +485,10 @@ module Tensor {
 
     proc randn(shape: int ...?d): Tensor(d,real) {
         var t = new Tensor((...shape));
-        var m: [t.data.domain] real;
-        forall i in m.domain {
-            var x: real = la.normal();
-            m[i] = x;
+        for i in t.domain {
+            t.data[i] = normal();
         }
-        return new Tensor(m);
+        return t;
     }
     proc zeros(shape: int ...?d): Tensor(d,real) {
         return new Tensor((...shape));
@@ -512,13 +514,35 @@ module Tensor {
     }
 
     proc exp(t: Tensor(?d)): Tensor(d) {
-        var data: [t.data.domain] real;
-        forall i in data.domain do
-            data[i] = Math.exp(t.data[i]);
-        return new Tensor(data);
-        // var t = new Tensor(rank=d,eltType=real);
-        // t.data = [x in t.data] Math.exp(x);
-        // return t;
+        var y = new Tensor(t.domain);
+        // y.data = [x in t.data] Math.exp(x);
+        foreach i in t.domain do
+            y.data[i] = Math.exp(t.data[i]);
+        return y;
+    }
+
+    var rng = new Random.RandomStream(eltType=real(64));
+
+    // mu : mean
+    // sigma : standard deviation
+    proc boxMuller(mu: real, sigma: real) {
+        var u1 = rng.getNext();
+        var u2 = rng.getNext();
+        var z0 = sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.pi * u2);
+        return mu + (sigma * z0);
+    }
+    proc normal() {
+        return boxMuller(0.0,1.0);
+    }
+
+    proc randn(shape: int ...?d, mu: real, sigma: real): Tensor(d,real) {
+        var t = new Tensor((...shape));
+        var m: [t.data.domain] real;
+        for i in m.domain {
+            var x: real = boxMuller(mu,sigma);
+            m[i] = x;
+        }
+        return new Tensor(m);
     }
 
     proc argmax(A: [?d] real) where d.rank == 1 {
@@ -784,7 +808,49 @@ module Tensor {
     //     const (x,y) = pOut;
     //     if filter.domain.contains((m - i, n - j))
     // }
+    // proc softmaxParts(t: Tensor(?rank)) {
+    //     const m = max reduce t.data;
+    //     if AutoMath.isnan(m) then err("Softmax max is NaN.");
+    //     if AutoMath.isinf(m) then err("Softmax max is inf.");
+    //     const expsData = [x in t.data] Math.exp(x - m);
+    //     const exps = new Tensor(expsData);
+    //     const sum = + reduce exps.data;
+    //     if sum == 0.0 then err("Softmax sum is zero.");
+    //     if AutoMath.isnan(sum) then err("Softmax sum is NaN.");
+    //     if AutoMath.isinf(sum) then err("Softmax sum is inf.");
 
+    //     const sm = exps / sum;
+    //     for i in sm.data.domain {
+    //         if AutoMath.isnan(sm.data[i]) then err("Softmax output is NaN.");
+    //         if AutoMath.isinf(sm.data[i]) then err("Softmax output is inf.");
+    //     }
+    //     return (exps, sum, sm);
+    // }
+    proc softmaxParts(t: Tensor(?rank)) {
+        const m = max reduce t.data;
+        var y = t;
+        y.data -= m;
+        foreach i in y.data.domain {
+            y.data[i] = Math.exp(y.data[i]);
+        }
+        const sum = + reduce y.data;
+        
+        return (y,sum,y / sum);
+    }
+
+    proc softmax(t: Tensor(?rank)) {
+        // const (exps, sum, expsOverSum) = softmaxParts(t);
+        // return expsOverSum;
+        const m = max reduce t.data;
+        var y = t;
+        y.data -= m;
+        foreach i in y.data.domain {
+            y.data[i] = Math.exp(y.data[i]);
+        }
+        const sum = + reduce y.data;
+        y.data /= sum;
+        return y;
+    }
 
 }
 

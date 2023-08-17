@@ -62,7 +62,8 @@ var net = new torch.Network(
     (
         new torch.Conv(1,8,4,stride=2),
         new torch.Conv(8,12,5),
-        // new torch.MaxPool(),
+        // new torch.ReLU(),
+        new torch.MaxPool(),
         new torch.SoftMax(10)
     )
 );
@@ -118,6 +119,8 @@ proc train(data: [] (Tensor(3),int), lr: real = 0.005) {
 
 
 config const numImages = 500;
+config const learnRate = 0.005; // 0.05;
+config const batchSize = 1;
 
 var imageData = MNIST.loadImages(numImages);
 imageData -= 0.5;
@@ -134,7 +137,7 @@ for epoch in 0..12 {
 
     Random.shuffle(trainingData);
 
-    debugFilters();
+    // debugFilters();
 
 
     // var loss = 0.0;
@@ -151,11 +154,10 @@ for epoch in 0..12 {
     //     numCorrect += a;
     // }
 
-    const batchSize = 1;
     for i in 0..#(trainingData.size / batchSize) {
         const batchRange = (i * batchSize)..#batchSize;
         const batch = trainingData[batchRange];
-        const (loss,acc) = train(batch);
+        const (loss,acc) = train(batch,learnRate);
         writeln("[",i + 1," of ", trainingData.size / batchSize, "] Loss ", loss / batchSize," Accuracy ", acc ," / ", batchSize);
         
         // if loss < 0.00001 {

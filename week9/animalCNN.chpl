@@ -4,28 +4,37 @@ use Tensor;
 import Animals10;
 
 import Math;
+import AutoMath;
 import Random;
 import IO;
 import BinaryIO;
 
 import Time;
 
+const numLabels = Animals10.categories.size;
+
+// var net = new torch.Network(
+//     (
+//         new torch.Conv(3,20,kernelSize=3,stride=2),
+//         // new torch.MaxPool(),
+//         new torch.Conv(20,30,kernelSize=3,stride=2),
+//         new torch.Conv(30,40,kernelSize=3),
+//         new torch.MaxPool(),
+//         new torch.Conv(20,25,kernelSize=3),
+//         new torch.MaxPool(),
+//         new torch.Flatten(),
+//         new torch.Dense(80), new torch.ReLU(0.01),
+//         // new torch.Dense(80), new torch.ReLU(),
+//         new torch.SoftMax(numLabels)
+//     )
+// );
 var net = new torch.Network(
     (
-        new torch.Conv(3,32,kernelSize=3,stride=2),
-        new torch.Conv(32,64,kernelSize=3,stride=2),
-        // new torch.MaxPool(),
-        new torch.Conv(64,128,kernelSize=3,stride=2),
-        new torch.Conv(128,256,kernelSize=3,stride=1),
-                // new torch.MaxPool(),
-
-        new torch.Conv(256,512,kernelSize=3,stride=1),
-        new torch.Conv(512,1024,kernelSize=3,stride=1),
-        new torch.Conv(1024,2048,kernelSize=3,stride=1),
+        new torch.Conv(3,8,4,stride=2),
+        new torch.Conv(8,12,5),
+        // new torch.ReLU(),
         new torch.MaxPool(),
-        // new torch.Conv(50,60,kernelSize=3),
-        // new torch.Conv(60,70,kernelSize=3),
-        new torch.SoftMax(10)
+        new torch.SoftMax(numLabels)
     )
 );
 // var net = new torch.Network(
@@ -64,24 +73,6 @@ proc forward(x: Tensor(?), lb: int) {
     return (output,loss,acc);
 }
 
-proc train(im: Tensor(?), lb: int, lr: real = 0.005) {
-    const (output,loss,acc) = forward(im,lb);
-    var gradient = tn.zeros(10);
-    gradient[lb] = -1.0 / output[lb];
-
-    net.resetGradients();
-
-    net.backwardProp(im,gradient);
-
-    // const backward = net.layers.last.backward(gradient,);
-    // const backward = net.backwardProp(im,gradient);
-    net.optimize(lr);
-
-    writeln("Gradient ",gradient);
-    // writeln("Backward ",backward);
-
-    return (loss,acc);
-}
 
 proc train(data: [] (Tensor(3),int), lr: real = 0.005) {
     // writeln("Training on ",data.domain.size," images");
@@ -93,8 +84,19 @@ proc train(data: [] (Tensor(3),int), lr: real = 0.005) {
     net.resetGradients();
     forall ((im,lb),i) in zip(data,0..) with (ref net,+ reduce loss, + reduce acc) {
         const (output,l,a) = forward(im,lb);
-        var gradient = tn.zeros(10);
-        gradient[lb] = -(1.0 / output[lb]);
+        var gradient = tn.zeros(numLabels);
+        // if output[lb] == 0.0 {
+        //     writeln("Output is 0.0");
+        //     halt(1);
+        // }
+        const g = -1.0 / output[lb];
+        if AutoMath.isnan(g) || AutoMath.isinf(g) {
+            writeln("Gradient is ",g);
+            writeln("Output is ",output);
+            writeln("Label is ",lb);
+            halt(1);
+        }
+        gradient[lb] = -1.0 / output[lb];
         
         net.backwardProp(im,gradient);
 
@@ -109,10 +111,10 @@ proc train(data: [] (Tensor(3),int), lr: real = 0.005) {
 
 
 
-config const numImages = 50;
-config const batchSize = 1;
-config const epochs = 20;
-config const learnRate = 0.0005;
+config const numImages = 400;
+config const batchSize = 50;
+config const epochs = 80;
+config const learnRate = 0.000005;
 
 var trainingData = for (name,im) in Animals10.loadAllIter(numImages) do (im,Animals10.labelIdx(name));
 forall (im,lb) in trainingData {

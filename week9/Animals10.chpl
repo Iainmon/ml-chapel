@@ -8,16 +8,16 @@ use Tensor;
 config const dataPath = "lib/animals-10/export/";
 
 const categories = [
-    "chicken",
+    // "chicken",
     "spider",
-    "cat",
-    "butterfly",
+    // "cat",
+    // "butterfly",
     "cow",
-    "horse",
-    "dog",
-    "sheep",
+    // "horse",
+    // "dog",
+    // "sheep",
     "elephant",
-    "squirrel"
+    // "squirrel"
 ];
 
 proc labelIdx(name: string): int {

@@ -134,6 +134,9 @@ proc main() {
         writeln(tn.filterGradient(tn.randn(5,5),tn.randn(2,2),stride=1,padding=0));
         writeln(t);
         writeln(tn.correlateWeight(t,(2,0),(1,0),stride=2,padding=1));
+
+        writeln(t.flatten());
+        writeln(t.flatten().reshape(t.domain));
     }
 
 }
