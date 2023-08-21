@@ -10,7 +10,7 @@ module Tensor {
     param debugPrint = false;
 
     var rng = new Random.RandomStream(eltType=real(64));
-
+    
     proc seedRandom(seed) {
         rng = new Random.RandomStream(eltType=real(64),seed=seed);
     }
@@ -549,6 +549,10 @@ module Tensor {
             m[i] = x;
         }
         return new Tensor(m);
+    }
+
+    proc shuffle(x) {
+        Random.shuffle(x,seed=rng.seed);
     }
 
     proc argmax(A: [?d] real) where d.rank == 1 {

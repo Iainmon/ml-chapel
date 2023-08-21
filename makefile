@@ -29,7 +29,7 @@ animalCNNTest: clean
 	./build/animalCNNTest
 
 mnistCNN: clean
-	chpl $(fast_flag) $(my_lib) -M ml-study/lib $(blas_libs)  $(output)/mnistCNN ml-study/correctness/mnistCNN.chpl
+	chpl $(fast_flag) $(my_lib) -M ml-study/lib $(blas_libs)  $(output)/mnistCNN ml-study/performance/mnistCNN.chpl
 	echo "Build complete."
 	./build/mnistCNN
 
