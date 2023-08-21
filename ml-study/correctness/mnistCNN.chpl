@@ -7,6 +7,8 @@ import Random;
 import IO;
 import BinaryIO;
 
+tn.seedRandom(0);
+
 // var net = new torch.Network(
 //     (
 //         new torch.Conv(1,20,3),

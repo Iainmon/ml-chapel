@@ -9,6 +9,12 @@ module Tensor {
 
     param debugPrint = false;
 
+    var rng = new Random.RandomStream(eltType=real(64));
+
+    proc seedRandom(seed) {
+        rng = new Random.RandomStream(eltType=real(64),seed=seed);
+    }
+
     proc err(args...?n) {
         var s = "";
         for param i in 0..<n {
@@ -521,7 +527,7 @@ module Tensor {
         return y;
     }
 
-    var rng = new Random.RandomStream(eltType=real(64));
+    // var rng = new Random.RandomStream(eltType=real(64));
 
     // mu : mean
     // sigma : standard deviation
