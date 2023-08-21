@@ -33,6 +33,11 @@ mnistCNN: clean
 	echo "Build complete."
 	./build/mnistCNN
 
+mnistCNNBatch: clean
+	chpl $(fast_flag) $(my_lib) -M ml-study/lib $(blas_libs)  $(output)/mnistCNN ml-study/performance/mnistCNNBatch.chpl
+	echo "Build complete."
+	./build/mnistCNN
+
 torch: clean
 	chpl $(fast_flag) $(my_lib) $(blas_libs)  $(output)/Torch week9/Torch.chpl
 	echo "Build complete."

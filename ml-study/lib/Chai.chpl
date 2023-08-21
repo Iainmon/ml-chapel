@@ -48,6 +48,16 @@ module Chai {
             const activation = (weights * input) + bias;
             return activation;
         }
+        proc forwardProp(batch: [] Tensor(1)): [] Tensor(1) {
+            const batchSize = batch.size;
+
+            var activations: [0..#batchSize] Tensor(2,real);
+            activations.reshapeDomain({0..#outputSize});
+            forall i in 0..#batchSize {
+                activations[i] = forwardProp(batch[i]);
+            }
+            return activations;
+        }
 
         // proc backward(delta: Tensor(1)): Tensor(1) {
         //     const newDelta = weights.transpose() * delta;
@@ -61,6 +71,24 @@ module Chai {
             biasGrad    += newDelta;
             weightsGrad += newDelta * input.transpose();
             return newDelta;
+        }
+
+        proc backward(deltas: [] Tensor(1), inputs: [] Tensor(1)): [] Tensor(1) {
+            const batchSize = deltas.size;
+            var newDeltas: [0..#batchSize] Tensor(1);
+
+            var biasGrad = this.biasGrad;
+            var weightsGrad = this.weightsGrad;
+            forall (delta,input,i) in zip(deltas,inputs,0..) with (+ reduce biasGrad, + reduce weightsGrad) {
+                const newDelta = weights.transpose() * delta;
+                biasGrad    += newDelta;
+                weightsGrad += newDelta * input.transpose();
+                newDeltas[i] = newDelta;
+            }
+            this.biasGrad.data = biasGrad.data;
+            this.weightsGrad.data = weightsGrad.data;
+
+            return newDeltas;
         }
 
         proc optimize(mag: real(64)) {
@@ -141,6 +169,15 @@ module Chai {
                     yield (region,i,j);
                 }
             }
+        }
+
+        proc forwardProp(batch: [] Tensor(3)): [] Tensor(3) {
+            const batchSize = batch.size;
+            var convs: [0..#batchSize] Tensor(3);
+            forall (image,i) in zip(batch,0..) {
+                convs[i] = forwardProp(image);
+            }
+            return convs;
         }
 
         proc forwardProp(images: Tensor(3)): Tensor(3) {
@@ -425,6 +462,38 @@ module Chai {
             return output;
         }
 
+        proc backward(deltas: [] Tensor(3), imagess: [] Tensor(3)): [] Tensor(3) {
+            const batchSize = deltas.size;
+            var newDeltas: [0..#batchSize] Tensor(3);
+            var filtersGrad = this.filtersGrad;
+            forall (delta,images,i) in zip(deltas,imagess,0..) with (+ reduce filtersGrad) {
+                // coppied from above
+                const (h,w,channels) = images.shape;
+                const (outChannels,kh,kw,inChannels) = filters.shape;
+                const (dh,dw,dc) = delta.shape;
+                if dc != outChannels then tn.err("Conv backward: outChannels mismatch");
+                if channels != inChannels then tn.err("Conv backward: inChannels mismatch");
+                const dL_dF = tn.filterGradient(images,delta,stride,padding,kh);
+                filtersGrad += dL_dF;
+                var dL_dX = new Tensor(3,real);
+                dL_dX.reshapeDomain({0..#h, 0..#w, 0..#inChannels});
+                forall (m,n,ci) in {0..#h, 0..#w, 0..#inChannels} with (ref dL_dX) {
+                    var sum = 0.0;
+                    forall co in 0..#outChannels with (+ reduce sum) {
+                        forall (i,j) in {0..#dh, 0..#dw} with (+ reduce sum) {
+                            const (dXi,dXj) = correlateWeightIdx((kh,kw),(m,n),(i,j),stride,padding);
+                            if dXi != -1 then
+                                sum += delta[i,j,co] * filters[co,dXi,dXj,ci];
+                        }
+                    }
+                    dL_dX[m,n,ci] = sum;
+                }
+                newDeltas[i] = dL_dX;
+            }
+            this.filtersGrad.data = filtersGrad.data;
+            return newDeltas;
+        }
+
         proc optimize(mag: real(64)) {
             const (outChannels,kh,kw,inChannels) = filters.shape;
             // filters -= (mag / (inChannels:real)) * filtersGrad;
@@ -460,6 +529,15 @@ module Chai {
                     yield (region,i,j);
                 }
             }
+        }
+
+        proc forwardProp(batch: [] Tensor(3)): [] Tensor(3) {
+            const batchSize = batch.size;
+            var pools: [0..#batchSize] Tensor(3);
+            forall (convs,i) in zip(batch,0..) {
+                pools[i] = forwardProp(convs);
+            }
+            return pools;
         }
 
         proc forwardProp(convs: Tensor(3)): Tensor(3) {
@@ -549,6 +627,15 @@ module Chai {
             return output;
         }
 
+        proc backward(deltas: [] Tensor(3), convs: [] Tensor(3)): [] Tensor(3) {
+            const batchSize = deltas.size;
+            var newDeltas: [0..#batchSize] Tensor(3);
+            forall (delta,convs,i) in zip(deltas,convs,0..) {
+                newDeltas[i] = backward(delta,convs);
+            }
+            return newDeltas;
+        }
+
         proc optimize(mag: real(64)) { }
         proc resetGradients() { }
 
@@ -636,6 +723,15 @@ module Chai {
             this.outputSize = outputSize;
         }
 
+        proc forwardProp(batch: [] Tensor(1)): [] Tensor(1) {
+            const batchSize = batch.size;
+            var outputs: [0..#batchSize] Tensor(1);
+            forall (input,i) in zip(batch,0..) {
+                outputs[i] = forwardProp(input);
+            }
+            return outputs;
+        }
+
 
         proc forwardProp(input: Tensor(?)): Tensor(1) {
             tn.debugWrite("[enter softmax forward]");
@@ -718,6 +814,40 @@ module Chai {
             // return grad.reshape(convs.shape);
         }
 
+        proc backward(deltas: [] Tensor(1), inputs: [] Tensor(?)): [] Tensor(1) {
+            const batchSize = deltas.size;
+            var newDeltas: [0..#batchSize] Tensor(?);
+            var weightsGrad = this.weightsGrad;
+            var biasesGrad = this.biasesGrad;
+            forall (delta,input,idx) in zip(deltas,inputs,0..) with (+ reduce weightsGrad, + reduce biasesGrad) {
+                // Coppied from above
+                const flattened = input.flatten();
+                const Z = (weights * flattened) + biases;
+                const (exp,expSum,softmax) = tn.softmaxParts(Z);
+                const dL_dOut = delta;
+                var nonZeroIdx: int = -1;
+                for i in delta.data.domain do
+                    if delta[i] != 0.0 { nonZeroIdx = i; break; }
+                if nonZeroIdx == -1 then tn.err("Softmax backward: delta is zero vector");
+                const i = nonZeroIdx;
+                var dOut_dZ: Tensor(1) = (- exp[i]) * (exp / (expSum ** 2.0));
+                dOut_dZ[i] = exp[i] * (expSum - exp[i]) / (expSum ** 2.0);
+                const dZ_dW: Tensor(1) = flattened;
+                const dZ_dB: real = 1;
+                const dZ_dIn: Tensor(2) = weights;
+                const dL_dZ: Tensor(1) = dL_dOut[i] * dOut_dZ;
+                const dL_dW: Tensor(2) = dL_dZ * dZ_dW.transpose();
+                const dL_dB: Tensor(1) = dL_dZ * dZ_dB;
+                const dL_dIn: Tensor(1) = dZ_dIn.transpose() * dL_dZ;
+                weightsGrad += dL_dW;
+                biasesGrad += dL_dB;
+                newDeltas[idx] = dL_dIn.reshape(input.domain);
+            }
+            this.weightsGrad.data = weightsGrad.data;
+            this.biasesGrad.data = biasesGrad.data;
+            return newDeltas;
+        }
+
         proc optimize(mag: real(64)) {
             weights.data -= mag * weightsGrad.data;
             biases.data -= mag * biasesGrad.data;
@@ -749,6 +879,12 @@ module Chai {
         return forwardPropHelp(layers, n+1, xNext);
     }
 
+    proc forwardPropHelpBatch(ref layers, param n: int, xs) {
+        if n == layers.size then return xs;
+        const xNexts = layers[n].forwardProp(xs);
+        return forwardPropHelpBatch(layers, n+1, xNexts);
+    }
+
     proc backwardPropHelp(ref layers, param n: int, x: Tensor(?)) {
         if n == 0 then return layers[0].backward(x);
 
@@ -771,6 +907,17 @@ module Chai {
         return layers[n].backward(delta,x);
     }
 
+    proc backwardForwardPropHelpBatch(ref layers, param n: int, xs, lastDeltas) {
+        if n == layers.size { return lastDeltas; }
+        // if n == layers.size - 1 {
+        //     return layers[n].backward(lastDeltas,xs);
+        // }
+
+        const lastInputs = layers[n].forwardProp(xs);
+        const deltas = backwardForwardPropHelpBatch(layers, n+1, lastInputs, lastDeltas);
+        return layers[n].backward(deltas,xs);
+    }
+
     record Network {
         var layers;
 
@@ -782,11 +929,17 @@ module Chai {
         proc forwardProp(x: Tensor(?)) {
             return forwardPropHelp(this.layers, 0, x);
         }
+        proc forwardPropBatch(xs) {
+            return forwardPropHelpBatch(this.layers, 0, xs);
+        }
         proc backwardProp(x: Tensor(?)) {
             return backwardPropHelp(this.layers,this.layers.size - 1,x);
         }
         proc backwardProp(x: Tensor(?), delta: Tensor(?)) {
             return backwardForwardPropHelp(this.layers,0,x,delta);
+        }
+        proc backwardPropBatch(xs, deltas) {
+            return backwardForwardPropHelpBatch(this.layers,0,xs,deltas);
         }
         proc optimize(mag: real) {
             for param i in 0..#(layers.size) {
