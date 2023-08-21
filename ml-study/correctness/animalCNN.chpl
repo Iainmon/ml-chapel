@@ -79,16 +79,10 @@ proc train(batch: [] (Tensor(3),int), lr: real = 0.005) {
     var loss = 0.0;
     var acc = 0;
 
-    // net.resetGradients();
-
-    // var networkGradient = net.initialGradient();
-
     var networkGradients = [0..#(batch.size)] net.initialGradient();
-
 
     forall ((im,lb),i) in zip(batch,0..) with (ref net,+ reduce loss, + reduce acc) {
 
-        // write initializers for each layers gradientType. 
         const (output,l,a) = forward(im,lb);
         writeln("forward prop: ", i);
         var gradient = tn.zeros(numLabels);
@@ -102,28 +96,18 @@ proc train(batch: [] (Tensor(3),int), lr: real = 0.005) {
         }
         gradient[lb] = -1.0 / output[lb];
 
-        writeln("gradient: ", i);
         
-        // var blank = net.initialGradient();
         net.backwardProp(im,gradient,networkGradients[i]);
-        // networkGradient += blank;
-        // for param n in 0..#(networkGradient.size) {
-        //     networkGradient[n] += blank[n];
-        // }
-        writeln("backward prop: ", i);
 
         loss += l;
         acc += if a then 1 else 0;
-        writeln("end of loop");
     }
-    writeln("summing gradients");
+
     var networkGradient = net.initialGradient();
     for g in networkGradients {
         networkGradient += g;
     }
     writeln(networkGradient.type:string);
-
-    writeln("optimizing...");
 
     const batchSize = batch.domain.size;
     net.optimize(lr / batchSize, networkGradient);

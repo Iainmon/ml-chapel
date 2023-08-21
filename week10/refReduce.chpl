@@ -9,6 +9,10 @@ operator +=(ref a: MyInt, b: MyInt) {
     a.x += b.x;
 }
 
+operator +(a: nothing, b: nothing) {
+    return none;
+}
+
 record Summer {
     var y: (MyInt,MyInt);
     proc sum(ref x: (MyInt,MyInt)) {
@@ -38,6 +42,10 @@ proc main() {
         smr.sum(x);
     }
     writeln(x);
+
+    var ys = [0..#100] (new MyInt(1),none,none,new MyInt(2));
+    var ysum = + reduce ys;
+    writeln(ysum);
     
 }
 
