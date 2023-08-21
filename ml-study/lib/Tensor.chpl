@@ -325,10 +325,38 @@ module Tensor {
 
     operator +(lhs: Tensor(?rank,?eltType), rhs: Tensor(rank,eltType)) {
         // Fastest
-        var t = new Tensor(rank=rank,eltType=eltType);
-        t.reshapeDomain(lhs._domain);
-        t.data = lhs.data + rhs.data;
-        return t; // 3.2, 3.2, 4.0
+        // var lhs = _lhs;
+        // var rhs = _rhs;
+        // if lhs.domain.size == 0 || rhs.domain.size == 0 then
+        //     writeln("lhs.domain.size == ", lhs.domain.size ," || rhs.domain.size == ", rhs.domain.size);
+
+        if lhs.domain.size == 0 then
+            return rhs;
+        if rhs.domain.size == 0 then
+            return lhs;
+        // if lhs.domain.size == 0 {
+        //     lhs.reshapeDomain(rhs._domain);
+        // }
+        // if rhs.domain.size == 0 {
+        //     rhs.reshapeDomain(lhs._domain);
+        // }
+
+        // writeln("hello start");
+
+        if lhs.domain.size != rhs.domain.size then
+            err("Cannot add tensors of different sizes: ", lhs.domain.size, " != ", rhs.domain.size);
+        if lhs.domain.size == rhs.domain.size {
+            // if lhs.domain.size == 0 then
+            //     err("Cannot add tensors of size 0.");
+            var t = new Tensor(rank=rank,eltType=eltType);
+            t.reshapeDomain(lhs._domain);
+            t.data = lhs.data + rhs.data;
+            // writeln("hello end");
+            return t;  // 3.2, 3.2, 4.0
+        }
+        err("Error adding tensors.");
+        return lhs;
+        
 
         // return new Tensor(lhs.data + rhs.data); // 4.5, 4.0
 

@@ -37,6 +37,18 @@ var net = new torch.Network(
         new torch.SoftMax(numLabels)
     )
 );
+
+record GradAccumulator {
+    var gradient: net.gradientType = net.initialGradient();
+}
+
+operator +(a: GradAccumulator, b: GradAccumulator) {
+    return new GradAccumulator(a.gradient + b.gradient);
+}
+operator +=(ref a: GradAccumulator, b: GradAccumulator) {
+    a.gradient += b.gradient;
+}
+
 // var net = new torch.Network(
 //     (
 //         new torch.Conv(3,16,kernelSize=3),
@@ -79,12 +91,12 @@ proc train(batch: [] (Tensor(3),int), lr: real = 0.005) {
     var loss = 0.0;
     var acc = 0;
 
-    var networkGradients = [0..#(batch.size)] net.initialGradient();
+    // var networkGradients = [0..#(batch.size)] net.initialGradient();
+    var gradAcc = new GradAccumulator();
 
-    forall ((im,lb),i) in zip(batch,0..) with (ref net,+ reduce loss, + reduce acc) {
+    forall ((im,lb),i) in zip(batch,0..) with (ref net,+ reduce loss, + reduce acc, + reduce gradAcc) {
 
         const (output,l,a) = forward(im,lb);
-        writeln("forward prop: ", i);
         var gradient = tn.zeros(numLabels);
 
         const g = -1.0 / output[lb];
@@ -96,17 +108,25 @@ proc train(batch: [] (Tensor(3),int), lr: real = 0.005) {
         }
         gradient[lb] = -1.0 / output[lb];
 
-        
-        net.backwardProp(im,gradient,networkGradients[i]);
+    
+        // net.backwardProp(im,gradient,networkGradients[i]);
+        // var localGradAcc = new GradAccumulator();
+        // net.backwardProp(im,gradient,localGradAcc.gradient);
+        // gradAcc += localGradAcc;
+        // var localGradAcc = new GradAccumulator();
+        net.backwardProp(im,gradient,gradAcc.gradient);
+        // gradAcc += localGradAcc;
 
         loss += l;
         acc += if a then 1 else 0;
     }
 
-    var networkGradient = net.initialGradient();
-    for g in networkGradients {
-        networkGradient += g;
-    }
+    // var networkGradient = net.initialGradient();
+    // for g in networkGradients {
+    //     networkGradient += g;
+    // }
+    // var networkGradient = + reduce networkGradients;
+    var networkGradient = gradAcc.gradient;
     writeln(networkGradient.type:string);
 
     const batchSize = batch.domain.size;
@@ -118,9 +138,9 @@ proc train(batch: [] (Tensor(3),int), lr: real = 0.005) {
 
 
 config const numImages = 100;
-config const batchSize = 1;
+config const batchSize = 10;
 config const epochs = 80;
-config const learnRate = 0.000005;
+config const learnRate = 0.0005;
 
 var trainingData = for (name,im) in Animals10.loadAllIter(numImages) do (im,Animals10.labelIdx(name));
 forall (im,lb) in trainingData {
