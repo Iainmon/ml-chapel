@@ -594,13 +594,10 @@ module Chai {
     }
 
     proc backwardForwardPropHelpGradRef(ref layers,ref layerGrads, param n: int,x : Tensor(?), lastDelta: Tensor(?)) {
-        writeln("hello ", n);
         ref layerGradient: layers[n].gradientType = layerGrads[n];
 
         if n == layers.size - 1 {
-            const grad = layers[n].backward(lastDelta,x,layerGradient);
-            writeln("goodbye ", n);
-            return grad;
+            return layers[n].backward(lastDelta,x,layerGradient);
         }
 
         // const lastInput = layers[n].forwardProp(x);
@@ -610,9 +607,7 @@ module Chai {
         // Better? 
         const lastInput = layers[n].forwardProp(x);
         const delta = backwardForwardPropHelpGradRef(layers,layerGrads, n + 1, lastInput, lastDelta);
-        const grad = layers[n].backward(delta,x,layerGradient);
-        writeln("goodbye ", n);
-        return grad;
+        return layers[n].backward(delta,x,layerGradient);
     }
 
     proc tupleTypeBuilder(ref layers, param n: int) {

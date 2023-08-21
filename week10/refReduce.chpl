@@ -1,15 +1,24 @@
+record MyInt {
+    var x: int;
+}
 
+operator +(a: MyInt, b: MyInt) {
+    return new MyInt(a.x + b.x);
+}
+operator +=(ref a: MyInt, b: MyInt) {
+    a.x += b.x;
+}
 
 record Summer {
-    var y: int;
-    proc sum(ref x: int) {
+    var y: (MyInt,MyInt);
+    proc sum(ref x: (MyInt,MyInt)) {
         x += y;
     }
 }
 
 record ManySummer {
     var summers;
-    proc sum(ref x: int) {
+    proc sum(ref x: (MyInt,MyInt)) {
         for param n in 0..#(summers.size) {
             summers[n].sum(x);
         }
@@ -17,17 +26,18 @@ record ManySummer {
 }
 
 proc main() {
-    var smr = new ManySummer((new Summer(1),new Summer(2), new Summer(3)));
-    var x = 0;
+    var smr = new ManySummer((new Summer((new MyInt(1),new MyInt(2))),new Summer((new MyInt(3),new MyInt(4))), new Summer((new MyInt(5),new MyInt(6)))));
+    var x = (new MyInt(0),new MyInt(0));
     forall i in 0..#100 with (+ reduce x) {
         smr.sum(x);
     }
     writeln(x);
     
-    x = 0;
+    x = (new MyInt(0),new MyInt(0));
     for i in 0..#100 {
         smr.sum(x);
     }
     writeln(x);
+    
 }
 
