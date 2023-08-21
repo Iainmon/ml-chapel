@@ -63,10 +63,20 @@ config const dataPath = "ml-study/performance/data";
 //     )
 // );
 
+// var net = new torch.Network(
+//     (
+//         new torch.Conv(1,8,4,stride=2),
+//         new torch.Conv(8,12,5),
+//         // new torch.ReLU(),
+//         new torch.MaxPool(),
+//         new torch.SoftMax(10)
+//     )
+// );
+
 var net = new torch.Network(
     (
-        new torch.Conv(1,8,4,stride=2),
-        new torch.Conv(8,12,5),
+        new torch.Conv(1,12,3,stride=2),
+        new torch.Conv(12,16,4),
         // new torch.ReLU(),
         new torch.MaxPool(),
         new torch.SoftMax(10)
@@ -111,11 +121,11 @@ proc train(data: [] (Tensor(3),int), lr: real = 0.005) {
 
 
 
-config const numTrainImages = 500;
+config const numTrainImages = 20000;
 config const numTestImages = 100;
 
 config const learnRate = 0.5; // 0.05;
-config const batchSize = 1;
+config const batchSize = 50;
 config const numEpochs = 30;
 
 
