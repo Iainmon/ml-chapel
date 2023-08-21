@@ -209,7 +209,9 @@ module Chai {
             if channels != inChannels then tn.err("Conv backward: inChannels mismatch");
 
             const dL_dF = tn.filterGradient(images,delta,stride,padding,kh);
+            writeln("begin");
             myGradient += dL_dF;
+            writeln("end");
 
             var dL_dX = new Tensor(3,real);
             dL_dX.reshapeDomain({0..#h, 0..#w, 0..#inChannels});
@@ -352,6 +354,11 @@ module Chai {
         }
         proc read(fr: IO.fileReader) throws { }
     }
+
+    operator +(x: nothing, y: nothing) {
+        return none;
+    }
+    operator +=(ref x: nothing, y: nothing) {}
 
     record ReLU {
         var a: real = 0.0;
@@ -587,11 +594,13 @@ module Chai {
     }
 
     proc backwardForwardPropHelpGradRef(ref layers,ref layerGrads, param n: int,x : Tensor(?), lastDelta: Tensor(?)) {
-
+        writeln("hello ", n);
         ref layerGradient: layers[n].gradientType = layerGrads[n];
 
         if n == layers.size - 1 {
-            return layers[n].backward(lastDelta,layerGradient,x);
+            const grad = layers[n].backward(lastDelta,x,layerGradient);
+            writeln("goodbye ", n);
+            return grad;
         }
 
         // const lastInput = layers[n].forwardProp(x);
@@ -601,7 +610,9 @@ module Chai {
         // Better? 
         const lastInput = layers[n].forwardProp(x);
         const delta = backwardForwardPropHelpGradRef(layers,layerGrads, n + 1, lastInput, lastDelta);
-        return layers[n].backward(delta,x,layerGradient);
+        const grad = layers[n].backward(delta,x,layerGradient);
+        writeln("goodbye ", n);
+        return grad;
     }
 
     proc tupleTypeBuilder(ref layers, param n: int) {
@@ -609,11 +620,20 @@ module Chai {
         return (layers[n].gradientType, (...tupleTypeBuilder(layers,n+1)));
     }
 
+    proc convert(args) type where isTuple(args) {
+        proc rec(param idx: int) type {
+            if idx == args.size - 1 then return (args[idx].gradientType,);
+            return (args[idx].gradientType, (...rec(idx+1)));
+        }
+        return rec(0);
+    }
+
     record Network {
         var layers;
 
-        proc gradientType {
-            return (...tupleTypeBuilder(layers,0));
+        proc gradientType type {
+            // return (...tupleTypeBuilder(layers,0));
+            return convert(layers);
         }
 
         proc init(layers) {
@@ -625,7 +645,7 @@ module Chai {
 
         proc initialGradient() {
             var grads: this.gradientType;
-            forall i in 0..#(layers.size) {
+            for param i in 0..#(layers.size) {
                 grads[i] = layers[i].initialGradient();
             }
             return grads;
@@ -648,7 +668,7 @@ module Chai {
         }
 
         proc optimize(mag: real, ref layerGrads: this.gradientType) {
-            forall i in 0..#(layers.size) with (ref this) {
+            for param i in 0..#(layers.size) {
                 ref layerGradient = layerGrads[i];
                 layers[i].optimize(mag,layerGradient);
             }
@@ -719,6 +739,45 @@ module Chai {
         }
 
     }
+
+    /* Implements + reduction over numeric data. */
+    class PlusReduceOp: ReduceScanOp {
+
+        /* the type of the elements to be reduced */
+        type eltType;
+
+        /* task-private accumulator/reduction state */
+        var value: eltType;
+
+        /* identity w.r.t. the reduction operation */
+        proc identity { return value: eltType; }
+
+        /* accumulate a single element onto the accumulator */
+        proc accumulate(elm)  { value = value + elm; }
+
+        /* accumulate a single element onto the state */
+        proc accumulateOntoState(ref state, elm)  { state = state + elm; }
+
+        /* accumulate the value of the outer variable at the entry to the loop */
+        // Note: this method is optional. If it is not provided,
+        // accumulate(outerVar) is used instead.
+        proc initialAccumulate(outerVar) { value = value + outerVar: eltType; }
+
+        // Note: 'this' can be accessed by multiple calls to combine()
+        // concurrently. The Chapel implementation serializes such calls
+        // with a lock on 'this'.
+        // 'other' will not be accessed concurrently.
+        /* combine the accumulations in 'this' and 'other' */
+        proc combine(other: borrowed PlusReduceOp)   { value = value + other.value; }
+
+        /* Convert the accumulation into the value of the reduction
+            that is reported to the user. This is trivial in our case. */
+        proc generate() { return value; }
+
+        /* produce a new instance of this class */
+        proc clone() { return new unmanaged PlusReduceOp(eltType=eltType,value=value); }
+    }
+
 
     proc main() {
         // var n = new Network(

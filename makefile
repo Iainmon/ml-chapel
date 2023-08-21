@@ -54,6 +54,11 @@ tensor: clean
 	echo "Build complete."
 	./build/Tensor
 
+refReduce: clean
+	chpl $(fast_flag) $(my_lib) $(blas_libs)  $(output)/refReduce week10/refReduce.chpl
+	echo "Build complete."
+	./build/refReduce
+
 iterTest: clean
 	chpl $(fast_flag) $(my_lib) $(blas_libs)  $(output)/test week9/iterTest.chpl
 	echo "Build complete."

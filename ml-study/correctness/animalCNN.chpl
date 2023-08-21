@@ -79,13 +79,18 @@ proc train(batch: [] (Tensor(3),int), lr: real = 0.005) {
     var loss = 0.0;
     var acc = 0;
 
-    net.resetGradients();
+    // net.resetGradients();
 
     var networkGradient = net.initialGradient();
+    networkGradient += networkGradient;
+    networkGradient = networkGradient + networkGradient;
+    writeln(networkGradient.type:string);
 
     forall ((im,lb),i) in zip(batch,0..) with (ref net,+ reduce loss, + reduce acc, + reduce networkGradient) {
+
         // write initializers for each layers gradientType. 
         const (output,l,a) = forward(im,lb);
+        writeln("forward prop: ", i);
         var gradient = tn.zeros(numLabels);
 
         const g = -1.0 / output[lb];
@@ -96,13 +101,23 @@ proc train(batch: [] (Tensor(3),int), lr: real = 0.005) {
             halt(1);
         }
         gradient[lb] = -1.0 / output[lb];
+
+        writeln("gradient: ", i);
         
-        net.backwardProp(im,gradient,networkGradient);
+        var blank = net.initialGradient();
+        net.backwardProp(im,gradient,blank);
+        // networkGradient += blank;
+        for param n in 0..#(networkGradient.size) {
+            networkGradient[n] += blank[n];
+        }
+        writeln("backward prop: ", i);
 
         loss += l;
         acc += if a then 1 else 0;
+        writeln("end of loop");
     }
 
+    writeln("optimizing...");
 
     const batchSize = batch.domain.size;
     net.optimize(lr / batchSize, networkGradient);
@@ -112,8 +127,8 @@ proc train(batch: [] (Tensor(3),int), lr: real = 0.005) {
 
 
 
-config const numImages = 400;
-config const batchSize = 50;
+config const numImages = 100;
+config const batchSize = 1;
 config const epochs = 80;
 config const learnRate = 0.000005;
 
