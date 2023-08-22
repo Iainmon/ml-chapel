@@ -156,7 +156,7 @@ for epoch in 0..#numEpochs {
         const batchRange = (i * batchSize)..#batchSize;
         const batch = trainingData[batchRange];
         const (loss,acc) = train(batch,learnRate);
-        writeln("[",i + 1," of ", trainingData.size / batchSize, "] Loss ", loss / batchSize," Accuracy ", acc ," / ", batchSize);
+        // writeln("[",i + 1," of ", trainingData.size / batchSize, "] Loss ", loss / batchSize," Accuracy ", acc ," / ", batchSize);
 
     }
 
