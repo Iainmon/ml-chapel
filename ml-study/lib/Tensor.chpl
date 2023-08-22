@@ -80,10 +80,6 @@ module Tensor {
         }
         return filled;
     }
-    proc domainType(param rank: int) type {
-        type ty = domain(rank,int);
-        return ty;
-    }
 
     record Tensor {
         param rank: int;
@@ -93,6 +89,13 @@ module Tensor {
         var data: [_domain] eltType;
 
         proc shape do return this._domain.shape;
+        proc _dom do return this._domain;
+
+        forwarding data only this;
+        forwarding data only these;
+
+        proc reshapeDomain(d: this._domain.type) do
+            this._domain = d;
 
         proc init(param rank: int, type eltType) {
             this.rank = rank;
@@ -102,18 +105,12 @@ module Tensor {
             this._domain = {(...ranges)};
         }
         proc init(type eltType, shape: int ...?dim) {
-            this.rank = dim ;
-            this.eltType = eltType;
-            var ranges: dim*range;
-            for (size,r) in zip(shape,ranges) do r = 0..#size;
-            this._domain = {(...ranges)};
+            this.init(rank=dim,eltType=eltType);
+            this.reshapeDomain(domainFromShape((...shape)));
         }
         proc init(shape: int ...?dim) {
-            this.rank = dim ;
-            this.eltType = real;
-            var ranges: dim*range;
-            for (size,r) in zip(shape,ranges) do r = 0..#size;
-            this._domain = {(...ranges)};
+            this.init(rank=dim,eltType=real);
+            this.reshapeDomain(domainFromShape((...shape)));
         }
         proc init(data: [?d] ?eltType) {
             this.rank = d.rank;
@@ -126,20 +123,17 @@ module Tensor {
             this.eltType = real;
             this._domain = dom;
         }
-
         proc init(itr) where itr.type:string == "promoted expression" || itr.type:string == "iterator" {
             const A = itr;
             this.init(A);
             writeln("init(iter)");
         }
 
-
         proc init=(other: Tensor(?rank,?eltType)) {
             this.rank = other.rank;
             this.eltType = other.eltType;
             this._domain = other._domain;
             this.data = other.data;
-            // writeln("init= called");
         }
 
         operator =(ref lhs: Tensor(?rank,?eltType), rhs: Tensor(rank,eltType)) {
@@ -147,16 +141,17 @@ module Tensor {
             lhs.data = rhs.data;
         }
 
-
         operator =(ref lhs: Tensor(?rank,?eltType), rhs: [?d] eltType) where d.rank == rank {
             lhs._domain = d;
             lhs.data = rhs;
         }
+
         proc init=(rhs: [?d] eltType) where d.rank == rank {
             this.init(d.rank,eltType);
             this.reshapeDomain(d);
             this.data = rhs;
         }
+
         operator :(from: [?d] ?eltType, type toType: Tensor(d.rank,eltType)) {
             var t: Tensor(d.rank,eltType) = from;
             return t;
@@ -181,32 +176,27 @@ module Tensor {
             lhs.reshapeDomain(itr.domain);
             lhs.data = itr;
         }
+
         proc init=(itr) where itr.type:string == "promoted expression" || itr.type:string == "iterator" {
             const A = itr;
             this.init(A);
         }
+
         operator :(itr, type toType: Tensor(?rank,?eltType)) where itr.type:string == "promoted expression" || itr.type:string == "iterator" {
             var t: Tensor(rank,eltType) = itr;
             return t;
         }
 
 
-        proc _dom do return this._domain;
-
-        forwarding data only this;
-        forwarding data only these;
-        // forwarding data only domain;
-
-        proc reshapeDomain(d: this._domain.type) do
-            this._domain = d;
-        
-
+        // Transposes a vector to a row matrix
         proc transpose() where rank == 1 {
             const (p,) = shape;
             var t = new Tensor(eltType,1,p);
             t.data[0,..] = this.data;
             return t;
         }
+
+        // Matrix transpose
         proc transpose() where rank == 2 {
             const (m,n) = this.shape;
             var M = new Tensor(2,eltType);
@@ -217,14 +207,14 @@ module Tensor {
             return M;
         }
 
-
-
+        // Normalizes the tensor to have unit frobenius norm
         proc normalize() {
             const norm = sqrt(frobeniusNormPowTwo(this));
             const data = this.data / norm;
             return new Tensor(data);
         }
 
+        // Retruns new tensor with provided domain
         proc reshape(dom) {
             var t = new Tensor(dom.rank,eltType);
             t.reshapeDomain(dom);
@@ -232,16 +222,19 @@ module Tensor {
             return t;
         }
 
-        proc flatten() {
-            const size = this.data.domain.size;
-            return this.reshape({0..#size});
-        }
-
+        // Returns new tensor with provided shape
         proc reshape(shape: int ...?d) {
             const dom = domainFromShape((...shape));
             return this.reshape(dom);            
         }
 
+        // Returns new tensor with rank 1
+        proc flatten() {
+            const size = this.data.domain.size;
+            return this.reshape({0..#size});
+        }
+
+        // Returns a tensor with argument function applied to each element
         proc fmap(fn) {
             var t = new Tensor(rank,eltType);
             t.reshapeDomain(this.domain);
@@ -249,6 +242,7 @@ module Tensor {
             return t;
         }
         
+        // Prints the tensor (only really works for rank 1 and 2)
         proc writeThis(fw: IO.fileWriter) throws {
             fw.write("tensor(");
             const shape = this.shape;
@@ -271,21 +265,12 @@ module Tensor {
                 } else {
                     fw.write("]");
                 }
-
-                // if rank == 2 {
-                //     if idx[rank - 2] < shape[rank - 2] - 1 && i < data.domain.size - 1 then
-                //         fw.writeln(",");
-                // }
-                // if rank == 3 {
-                //     if i % (shape[1] * shape[2]) + 1 == 0 {
-                //         fw.writeln(",");
-                //     }
-                // }
                 first = false;
             }
             fw.writeln(", shape=",this.shape,")");
         }
 
+        // Serializer for tensor: rank,...shape,...data
         proc write(fw: IO.fileWriter) throws {
             fw.write(rank);
             for s in shape do
@@ -293,6 +278,8 @@ module Tensor {
             for i in data.domain do
                 fw.write(data[i]);
         }
+
+        // Deserializer for tensor: rank,...shape,...data
         proc read(fr: IO.fileReader) throws {
             var r = fr.read(int);
             if r != rank then
@@ -304,59 +291,15 @@ module Tensor {
             this._domain = d;
             for i in d do
                 this.data[i] = fr.read(eltType);
-                
         }
     }
-
-    // operator =(ref lhs: Tensor(?rank,?eltType), in rhs) {
-    //     lhs._domain = rhs._domain;
-    //     lhs.data = rhs;
-    // }
-
-    // operator =(ref lhs: Tensor(?rank,?eltType), rhs: [?d] eltType) where d.rank == rank {
-    //     lhs.reshapeDomain(d);
-    //     lhs.data = rhs.data;
-    // }
-
-    // operator =(ref lhs: Tensor(?rank,?eltType), rhs: Tensor(rank,eltType)) {
-    //     lhs._domain = rhs._domain;
-    //     lhs.data = rhs.data;
-    // }
-
-    // operator =(ref lhs: Tensor(?rank,?eltType), rhs: Tensor(rank,?t)) {
-    //     lhs._domain = rhs._domain;
-    //     lhs.data = (rhs.data : eltType);
-    // }
     
 
     operator +(lhs: Tensor(?rank,?eltType), rhs: Tensor(rank,eltType)) {
-        // Fastest
         var t = new Tensor(rank=rank,eltType=eltType);
         t.reshapeDomain(lhs._domain);
         t.data = lhs.data + rhs.data;
-        return t; // 3.2, 3.2, 4.0
-
-        // return new Tensor(lhs.data + rhs.data); // 4.5, 4.0
-
-        // var t = new Tensor(rank=d,eltType=ty);
-        // t.reshapeDomain(lhs._domain);
-        // t = lhs.data + rhs.data;
-        // return t; // 4.6, 5.0
-
-        // var t = new Tensor(rank=d,eltType=ty);
-        // t.reshapeDomain(lhs._domain);
-        // const data = lhs.data + rhs.data;
-        // t.data = data;
-        // return t; // 4.9, 4.6
-
-        // var t = new Tensor(rank=d,eltType=ty);
-        // const data = lhs.data + rhs.data;
-        // t = data;
-        // return t; // 4.6,4.7
-
-        // var t = new Tensor(rank=d,eltType=ty);
-        // t = lhs.data + rhs.data;
-        // return t; // 4.5,4.6
+        return t;
     }
     operator +=(ref lhs: Tensor(?d), const ref rhs: Tensor(d)) {
         lhs.data += rhs.data;
@@ -405,21 +348,12 @@ module Tensor {
         lhs.data *= rhs;
     }
 
+    // Matrix-vector multiplication
     operator *(lhs: Tensor(2,?eltType), rhs: Tensor(1,eltType)): Tensor(1,eltType) {
         const (m,n) = lhs.shape;
         const (p,) = rhs.shape;
         if n != p then
             err("Trying to apply a matrix of shape ",lhs.shape, " to a vector of shape ", rhs.shape);
-        
-        // const a = lhs.data;
-        // const v = rhs.data;
-        // var w: [0..#m] eltType;
-        // forall i in 0..#m {
-        //     const row = a[i,..];
-        //     w[i] = + reduce (row * v);
-        // }
-        // return new Tensor(w); // .3, .5, .3
-
 
         const a = lhs.data;
         const v = rhs.data;
@@ -430,45 +364,15 @@ module Tensor {
             w[i] = + reduce (row * v);
         }
         return w;
-
-        // var w = new Tensor(rank=1,eltType=eltType);
-        // w.reshapeDomain({0..#m});
-        // forall i in 0..#n with (ref w) {
-        //     var ci = 0.0;
-        //     forall k in 0..#m with (+ reduce ci) {
-        //         ci += lhs[k,i] * rhs[k];
-        //     }
-        //     w[i] = ci;
-        // } // .4, .3, .4
-
-        // var w = new Tensor(rank=1,eltType=eltType);
-        // w.reshapeDomain({0..#m});
-        // forall i in 0..#n with (+ reduce w) {
-        //     w += lhs[..,i] * rhs.data;
-        // } // .2, .3, .3
-
-        // const v = rhs.data;
-        // foreach i in 0..#m {
-        //     w[i] = + reduce (lhs[i,..] * v);
-        // } // .8, .7, .8
-
-        //return w;
     }
 
+    // Vector-row-matrix multiplication. Fills out multiplication table between a vector and a transposed vector
     operator *(lhs: Tensor(1,?eltType), rhs: Tensor(2,eltType)): Tensor(2,eltType) {
         const (p,) = lhs.shape;
         const (m,n) = rhs.shape;
         if m != 1 then
             err("Trying to apply a vector of shape ",lhs.shape, " to a matrix of shape ", rhs.shape);
         
-        // const a = rhs.data;
-        // const v = lhs.data;
-        // var b: [0..#p, 0..#n] eltType;
-        // forall (i,j) in b.domain {
-        //     b[i,j] = v[i] * a[0,j];
-        // }
-        // return new Tensor(b); // .4, .4, .2
-
         var b = new Tensor(rank=2,eltType=eltType);
         b.reshapeDomain({0..#p, 0..#n});
         foreach (i,j) in {0..#p, 0..#n} {
@@ -482,53 +386,41 @@ module Tensor {
         return new Tensor(data);
     }
 
-    proc matToTens(m: la.Matrix(?t)): Tensor(2,t) {
-        return new Tensor(m.underlyingMatrix);
-    }
-    proc vecToTens(v: la.Vector(?t)): Tensor(1,t) {
-        return new Tensor(v.underlyingVector);
-    }
-
-    proc randn(shape: int ...?d): Tensor(d,real) {
-        var t = new Tensor((...shape));
-        for i in t.domain {
-            t.data[i] = normal();
-        }
-        return t;
-    }
-    proc zeros(shape: int ...?d): Tensor(d,real) {
-        return new Tensor((...shape));
-    }
-
+    // Sigmoid function
     proc _sigmoid(x: real): real {
         return 1.0 / (1.0 + Math.exp(-x));
     }
+    // Derivative of sigmoid function
     proc _sigmoidPrime(x: real): real {
         const s = _sigmoid(x);
         return s * (1.0 - s);
     }
 
+    // Apply sigmoid function to each element of tensor
     proc sigmoid(t: Tensor(?d)): Tensor(d) {
         return t.fmap(_sigmoid);
     }
+
+    // Apply derivative of sigmoid function to each element of tensor
     proc sigmoidPrime(t: Tensor(?d)): Tensor(d) {
         return t.fmap(_sigmoidPrime);
     }
+
+    // Get forbenius norm before sqrt
     proc frobeniusNormPowTwo(t: Tensor(?d)): real {
         const AA = t.data ** 2.0;
         return + reduce AA;
     }
 
+    // Apply exponential function to each element of tensor
     proc exp(t: Tensor(?d)): Tensor(d) {
         var y = new Tensor(t.domain);
-        // y.data = [x in t.data] Math.exp(x);
         foreach i in t.domain do
             y.data[i] = Math.exp(t.data[i]);
         return y;
     }
 
-    // var rng = new Random.RandomStream(eltType=real(64));
-
+    // Wikipedia implementation (helper for randn)
     // mu : mean
     // sigma : standard deviation
     proc boxMuller(mu: real, sigma: real) {
@@ -541,6 +433,16 @@ module Tensor {
         return boxMuller(0.0,1.0);
     }
 
+    // Initialize a tensor with random values from a normal distribution
+    proc randn(shape: int ...?d): Tensor(d,real) {
+        var t = new Tensor((...shape));
+        for i in t.domain {
+            t.data[i] = normal();
+        }
+        return t;
+    }
+
+    // Initialize a tensor with random values from a normal distribution
     proc randn(shape: int ...?d, mu: real, sigma: real): Tensor(d,real) {
         var t = new Tensor((...shape));
         var m: [t.data.domain] real;
@@ -551,16 +453,21 @@ module Tensor {
         return new Tensor(m);
     }
 
+    // Initialize a tensor with zero values
+    proc zeros(shape: int ...?d): Tensor(d,real) {
+        return new Tensor((...shape));
+    }
+
+    // Shuffle a tensor in place
     proc shuffle(x) {
         Random.shuffle(x,seed=rng.seed);
     }
 
+    // Get the max value index in an array
     proc argmax(A: [?d] real) where d.rank == 1 {
-        // var max: real = A[0];
         var am: int = 0;
         for i in A.domain {
             if A[i] > A[am] {
-                // max = A[i];
                 am = i;
             }
         }
