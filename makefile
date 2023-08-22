@@ -58,6 +58,11 @@ runCNN: clean
 	echo "Build complete."
 	./build/runCNN
 
+ArrayExt: clean
+	chpl $(fast_flag) $(my_lib) $(blas_libs)  $(output)/ArrayExt week10/ArrayExt.chpl
+	echo "Build complete."
+	./build/ArrayExt
+
 
 tensor: clean
 	chpl $(fast_flag) $(my_lib) $(blas_libs)  $(output)/Tensor week9/Tensor.chpl
