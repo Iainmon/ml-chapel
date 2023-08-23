@@ -1,6 +1,5 @@
 module Tensor {
 
-    import Linear as la;
     import Math;
     import IO;
     import IO.FormattedIO;
@@ -60,6 +59,7 @@ module Tensor {
         return {(...ranges)};
     }
 
+    // Returns the nth element in a domain of shape `bounds`. Arbitrary mixed base counter.
     proc nbase(bounds: ?rank*int, n: int): rank*int {
         var filled: rank*int;
         var idx: int = rank - 1;
@@ -156,7 +156,8 @@ module Tensor {
             var t: Tensor(d.rank,eltType) = from;
             return t;
         }
-
+        
+        // Wasnt sure what to do with these
         // operator =(ref lhs: Tensor(?rank,?eltType), in rhs: ?it) where (isRefIterType(it) || (isArray(rhs) && rhs.eltType == eltType)) && rhs.rank == rank {
         //     lhs.reshapeDomain(rhs.domain);
         //     lhs.data = rhs;
@@ -474,6 +475,204 @@ module Tensor {
         return am;
     }
 
+    // Return a matrix padded by `padding` zeros on each side
+    proc pad(const ref x: Tensor(2), padding: int) {
+        var t = new Tensor(2,real);
+        const (h,w) = x.shape;
+        t.reshapeDomain({0..#(h + 2 * padding),0..#(w + 2 * padding)});
+        t.data[padding..#h, padding..#w] = x.data;
+        return t;
+    }
+
+    // Given a volume with shape (m,n,c), return a volume with shape (m + 2 * padding, n + 2 * padding, c)
+    proc pad(const ref x: Tensor(3), padding: int) {
+        var t = new Tensor(3,real);
+        const (h,w,c) = x.shape;
+        t.reshapeDomain({0..#(h + 2 * padding),0..#(w + 2 * padding),0..#c});
+        forall (i,j,c) in x.data.domain with (ref t) {
+            t[i + padding,j + padding,c] = x[i,j,c];
+        }
+        return t;
+    }
+
+    // Compute the resulting tensor shape of a cross correlation
+    proc correlateShape(filterShape: 2*int, inputShape: 2*int, stride: int, padding: int) {
+        const (kh,kw) = filterShape;
+        const (nh,nw) = inputShape;
+        if kh != kw then err("Correlation only works with square filters.", kh, " != ", kw);
+        return ((nh - kh + padding + stride) / stride,(nw - kw + padding + stride) / stride);
+    }
+
+    // Compute the resulting tensor shape of a cross correlation
+    proc correlate(const ref filter: Tensor(?), const ref input: Tensor(?), stride: int = 1, padding: int = 0) {
+        if padding > 0 then 
+            return correlate_(filter,pad(input,padding),stride,padding);
+        return correlate_(filter=filter,input=input,stride,padding);
+    }
+
+    // Compute the resulting matrix of a cross correlation
+    proc correlate_(const ref filter: Tensor(2), const ref input: Tensor(2), stride: int, padding: int): Tensor(2) {
+        const (kh,kw) = filter.shape;
+        const (nh,nw) = input.shape;
+        if kh != kw then err("Correlation only works with square filters.", kh, " != ", kw);
+        const (outH,outW): 2*int = ((nh - kh + padding + stride) / stride,(nw - kw + padding + stride) / stride);
+
+        var corr = new Tensor(2,real);
+        corr.reshapeDomain({0..#outH,0..#outW});
+
+        forall (x,y) in corr.data.domain with (ref corr) {
+            var sum = 0.0;
+            forall (i,j) in filter.data.domain with (+ reduce sum) {
+                sum += input[x * stride + i, y * stride + j] * filter[i,j];
+            }
+            corr[x,y] = sum;
+        }
+        return corr;
+    }
+
+    // Compute the sum of cross correlations for each filter and input channel
+    proc correlate_(const ref filter: Tensor(3), const ref input: Tensor(3), stride: int, padding: int): Tensor(2) {
+        const (kh,kw,cIn) = filter.shape;
+        const (nh,nw,nc) = input.shape;
+        if kh != kw then err("Correlation only works with square filters.", kh, " != ", kw);
+        if cIn != nc then err("Correlation only works with filters and inputs of the same depth.", cIn, " != ", nc);
+
+        const (outH,outW): 2*int = ((nh - kh + padding + stride) / stride,(nw - kw + padding + stride) / stride);
+
+        var corr = new Tensor(2,real);
+        corr.reshapeDomain({0..#outH,0..#outW});
+
+        forall (x,y) in corr.data.domain with (ref corr) {
+            var sum = 0.0;
+            forall (i,j,c) in filter.data.domain with (+ reduce sum) {
+                sum += input[x * stride + i, y * stride + j,c] * filter[i,j,c];
+            }
+            corr[x,y] = sum;
+        }
+
+        return corr;
+    }
+
+    // Compute the resulting tensor shape of a kernel dialation
+    proc dialateShape(filterShape: 2*int, stride: int) {
+        const (kh,kw) = filterShape;
+        return (kh + (stride * (kh - 1)), kw + (stride * (kw - 1)));
+    }
+
+    // Dialate a filter
+    proc dialate(const ref filter: Tensor(2), stride: int = 1) {
+        const (kh,kw) = filter.shape;
+        var d = new Tensor(2,real);
+        const (dh,dw) = (kh + (stride * (kh - 1)), kw + (stride * (kw - 1)));
+        d.reshapeDomain({0..#dh,0..#dw});
+        forall (i,j) in filter.data.domain with (ref d) {
+            d[i + i * stride,j + j * stride] = filter[i,j];
+        }
+        return d;
+    }
+
+    // Dialate a volume of filters
+    proc dialate(const ref filter: Tensor(3), stride: int = 1) {
+        const (kh,kw,kc) = filter.shape;
+        var d = new Tensor(3,real);
+        const (dh,dw) = (kh + (stride * (kh - 1)), kw + (stride * (kw - 1)));
+        d.reshapeDomain({0..#dh,0..#dw,0..#kc});
+        forall (i,j,c) in filter.data.domain with (ref d) {
+            d[i + i * stride,j + j * stride,c] = filter[i,j,c];
+        }
+        return d;
+    }
+
+    // Compute the gradient of a loss with respect to a filter
+    proc filterGradient(const ref input: Tensor(2), const ref delta: Tensor(2), stride: int = 1, padding: int = 0) {
+        const d = dialate(delta,stride - 1);
+        return correlate(d,input,stride=1,padding=padding);
+    }
+
+    // Compute the gradient of a loss with respect to a volume of filters
+    proc filterGradient(const ref input: Tensor(3), const ref delta: Tensor(3), stride: int = 1, padding: int = 0,kernelSize: int) {
+        const (inH,inW,inC) = input.shape;
+        const (outH,outW,outC) = delta.shape;
+
+        const (dkh,dkw) = dialateShape((outH,outW),stride - 1);
+        const (kh,kw) = correlateShape((dkh,dkw),(inH,inW),stride=1,padding);
+
+        var grad = new Tensor(4,real);
+        grad.reshapeDomain({0..#outC,0..#kh,0..#kw,0..#inC});
+        forall (ci,co) in {0..#inC,0..#outC} with (ref grad, var del = zeros(outH,outW), var img = zeros(inH,inW)) {
+            del = delta[..,..,co];
+            img = input[..,..,ci];
+            const d = dialate(del,stride - 1);
+            grad[co,..,..,ci] = correlate(d,img,stride=1,padding=padding);
+        }
+        return grad;
+    }
+
+    // Compute the gradient of a loss with respect to an input
+    proc correlateWeight(const ref filter: Tensor(2), pIn: 2*int, pOut: 2*int, stride: int = 1, padding: int = 0) {
+        const (m,n) = pIn;
+        const (i,j) = pOut;
+        const diff = (m - (stride * i - padding), n - (stride * j - padding));
+        const (dx,dy) = diff;
+        const (kh,kw) = filter.shape;
+        if dx >= 0 && dy >= 0 && dx < kh && dy < kw then
+            return filter[diff];
+        return 0.0;
+    }
+
+    // Compute the index of the gradient of a loss with respect to an input. Probably the most important function here.
+    proc correlateWeightIdx(filterShape: 2*int, pIn: 2*int, pOut: 2*int, stride: int = 1, padding: int = 0) {
+        const (m,n) = pIn;
+        const (i,j) = pOut;
+        const (dx,dy) = (m - (stride * i - padding), n - (stride * j - padding));
+        const (kh,kw) = filterShape;
+        if dx >= 0 && dy >= 0 && dx < kh && dy < kw then
+            return (dx,dy);
+        return (-1,-1);
+    }
+    
+    // Softmax but returns the sum of the exponentials and the exponentials themselves
+    proc softmaxParts(t: Tensor(?rank)) {
+        const m = max reduce t.data;
+        var y = t;
+        y.data -= m;
+        foreach i in y.data.domain {
+            y.data[i] = Math.exp(y.data[i]);
+        }
+        const sum = + reduce y.data;
+        
+        return (y,sum,y / sum);
+    }
+
+    // Softmax function
+    proc softmax(t: Tensor(?rank)) {
+        const m = max reduce t.data;
+        var y = t;
+        y.data -= m;
+        foreach i in y.data.domain {
+            y.data[i] = Math.exp(y.data[i]);
+        }
+        const sum = + reduce y.data;
+        y.data /= sum;
+        return y;
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* these functions were not needed for my final implementation. they are also wrong, but I would like to see the most efficient implementation of them in chapel. */
+
     proc convolve(kernel: [?dk] ?eltType, X: [?dx] eltType) where dx.rank == 2 && dk.rank == 2 {
         const (h,w) = X.shape;
         const (kh,kw) = kernel.shape;
@@ -563,269 +762,5 @@ module Tensor {
         return new Tensor(fullConvolve(kernel.data,X.data));
     }
 
-
-    proc pad(const ref x: Tensor(2), padding: int) {
-        var t = new Tensor(2,real);
-        const (h,w) = x.shape;
-        t.reshapeDomain({0..#(h + 2 * padding),0..#(w + 2 * padding)});
-        t.data[padding..#h, padding..#w] = x.data;
-        return t;
-    }
-    proc pad(const ref x: Tensor(3), padding: int) {
-        var t = new Tensor(3,real);
-        const (h,w,c) = x.shape;
-        t.reshapeDomain({0..#(h + 2 * padding),0..#(w + 2 * padding),0..#c});
-        forall (i,j,c) in x.data.domain with (ref t) {
-            t[i + padding,j + padding,c] = x[i,j,c];
-        }
-        return t;
-    }
-    proc correlateShape(filterShape: 2*int, inputShape: 2*int, stride: int, padding: int) {
-        const (kh,kw) = filterShape;
-        const (nh,nw) = inputShape;
-        if kh != kw then err("Correlation only works with square filters.", kh, " != ", kw);
-        return ((nh - kh + padding + stride) / stride,(nw - kw + padding + stride) / stride);
-
-    }
-    proc correlate(const ref filter: Tensor(?), const ref input: Tensor(?), stride: int = 1, padding: int = 0) {
-        if padding > 0 then 
-            return correlate_(filter,pad(input,padding),stride,padding);
-        return correlate_(filter=filter,input=input,stride,padding);
-    }
-
-    proc correlate_(const ref filter: Tensor(2), const ref input: Tensor(2), stride: int, padding: int): Tensor(2) {
-        const (kh,kw) = filter.shape;
-        const (nh,nw) = input.shape;
-        if kh != kw then err("Correlation only works with square filters.", kh, " != ", kw);
-        const (outH,outW): 2*int = ((nh - kh + padding + stride) / stride,(nw - kw + padding + stride) / stride);
-        // writeln("correlate_2d input shape: ", input.shape);
-        // writeln("correlate_2d filter shape: ", filter.shape);
-        // writeln("correlate_2d output shape: ",(outH,outW));
-        var corr = new Tensor(2,real);
-        corr.reshapeDomain({0..#outH,0..#outW});
-
-        forall (x,y) in corr.data.domain with (ref corr) {
-            var sum = 0.0;
-            forall (i,j) in filter.data.domain with (+ reduce sum) {
-                sum += input[x * stride + i, y * stride + j] * filter[i,j];
-            }
-            corr[x,y] = sum;
-        }
-
-        return corr;
-    }
-
-    proc correlate_(const ref filter: Tensor(3), const ref input: Tensor(3), stride: int, padding: int): Tensor(2) {
-        const (kh,kw,cIn) = filter.shape;
-        const (nh,nw,nc) = input.shape;
-        if kh != kw then err("Correlation only works with square filters.", kh, " != ", kw);
-        if cIn != nc then err("Correlation only works with filters and inputs of the same depth.", cIn, " != ", nc);
-
-        const (outH,outW): 2*int = ((nh - kh + padding + stride) / stride,(nw - kw + padding + stride) / stride);
-        // writeln((outH,outW));
-
-        var corr = new Tensor(2,real);
-        corr.reshapeDomain({0..#outH,0..#outW});
-
-        forall (x,y) in corr.data.domain with (ref corr) {
-            var sum = 0.0;
-            forall (i,j,c) in filter.data.domain with (+ reduce sum) {
-                sum += input[x * stride + i, y * stride + j,c] * filter[i,j,c];
-            }
-            corr[x,y] = sum;
-        }
-
-        return corr;
-    }
-    proc dialateShape(filterShape: 2*int, stride: int) {
-        const (kh,kw) = filterShape;
-        return (kh + (stride * (kh - 1)), kw + (stride * (kw - 1)));
-    }
-    proc dialate(const ref filter: Tensor(2), stride: int = 1) {
-        const (kh,kw) = filter.shape;
-        var d = new Tensor(2,real);
-        const (dh,dw) = (kh + (stride * (kh - 1)), kw + (stride * (kw - 1)));
-        d.reshapeDomain({0..#dh,0..#dw});
-        forall (i,j) in filter.data.domain with (ref d) {
-            d[i + i * stride,j + j * stride] = filter[i,j];
-        }
-        return d;
-    }
-
-    proc dialate(const ref filter: Tensor(3), stride: int = 1) {
-        const (kh,kw,kc) = filter.shape;
-        var d = new Tensor(3,real);
-        const (dh,dw) = (kh + (stride * (kh - 1)), kw + (stride * (kw - 1)));
-        d.reshapeDomain({0..#dh,0..#dw,0..#kc});
-        forall (i,j,c) in filter.data.domain with (ref d) {
-            d[i + i * stride,j + j * stride,c] = filter[i,j,c];
-        }
-        return d;
-    }
-
-    proc filterGradient(const ref input: Tensor(2), const ref delta: Tensor(2), stride: int = 1, padding: int = 0) {
-        const d = dialate(delta,stride - 1);
-        return correlate(d,input,stride=1,padding=padding);
-    }
-    proc filterGradient(const ref input: Tensor(3), const ref delta: Tensor(3), stride: int = 1, padding: int = 0,kernelSize: int) {
-        const (inH,inW,inC) = input.shape;
-        const (outH,outW,outC) = delta.shape;
-
-        const (dkh,dkw) = dialateShape((outH,outW),stride - 1);
-        const (kh,kw) = correlateShape((dkh,dkw),(inH,inW),stride=1,padding);
-        // const (kh,kw) = (kernelSize,kernelSize);
-        // writeln("inH: ", inH);
-        // writeln("inW: ", inW);
-        // writeln("inC: ", inC);
-        // writeln("outH: ", outH);
-        // writeln("outW: ", outW);
-        // writeln("outC: ", outC);
-        // writeln("kh: ", kh);
-        // writeln("dialetedShape: ", dialateShape((outH,outW),stride - 1));
-
-        var grad = new Tensor(4,real);
-        grad.reshapeDomain({0..#outC,0..#kh,0..#kw,0..#inC});
-        forall (ci,co) in {0..#inC,0..#outC} with (ref grad, var del = zeros(outH,outW), var img = zeros(inH,inW)) {
-//         for (ci,co) in {0..#inC,0..#outC} {
-// var del = zeros(outH,outW); var img = zeros(inH,inW);
-            del = delta[..,..,co];
-            img = input[..,..,ci];
-            const d = dialate(del,stride - 1);
-            grad[co,..,..,ci] = correlate(d,img,stride=1,padding=padding);
-        }
-        return grad;
-    }
-
-    proc correlateWeight(const ref filter: Tensor(2), pIn: 2*int, pOut: 2*int, stride: int = 1, padding: int = 0) {
-        const (m,n) = pIn;
-        const (i,j) = pOut;
-        const diff = (m - (stride * i - padding), n - (stride * j - padding));
-        const (dx,dy) = diff;
-        const (kh,kw) = filter.shape;
-        // if filter.data.domain.contains(diff) then
-        if dx >= 0 && dy >= 0 && dx < kh && dy < kw then
-            return filter[diff];
-        return 0.0;
-    }
-
-    proc correlateWeightIdx(filterShape: 2*int, pIn: 2*int, pOut: 2*int, stride: int = 1, padding: int = 0) {
-        const (m,n) = pIn;
-        const (i,j) = pOut;
-        const (dx,dy) = (m - (stride * i - padding), n - (stride * j - padding));
-        const (kh,kw) = filterShape;
-        if dx >= 0 && dy >= 0 && dx < kh && dy < kw then
-            return (dx,dy);
-        return (-1,-1);
-    }
-
-
-    // proc getCorrelationWeight(const ref filter: Tensor(2), )
-    // proc correlateDelta(pIn: 2*int,pOut: 2*int,const ref filter: Tensor(2), inputDomain: domain(2,int), stride: int = 1, padding: int = 0) {
-    //     const (m,n) = pIn;
-    //     const (x,y) = pOut;
-    //     if filter.domain.contains((m - i, n - j))
-    // }
-    // proc softmaxParts(t: Tensor(?rank)) {
-    //     const m = max reduce t.data;
-    //     if AutoMath.isnan(m) then err("Softmax max is NaN.");
-    //     if AutoMath.isinf(m) then err("Softmax max is inf.");
-    //     const expsData = [x in t.data] Math.exp(x - m);
-    //     const exps = new Tensor(expsData);
-    //     const sum = + reduce exps.data;
-    //     if sum == 0.0 then err("Softmax sum is zero.");
-    //     if AutoMath.isnan(sum) then err("Softmax sum is NaN.");
-    //     if AutoMath.isinf(sum) then err("Softmax sum is inf.");
-
-    //     const sm = exps / sum;
-    //     for i in sm.data.domain {
-    //         if AutoMath.isnan(sm.data[i]) then err("Softmax output is NaN.");
-    //         if AutoMath.isinf(sm.data[i]) then err("Softmax output is inf.");
-    //     }
-    //     return (exps, sum, sm);
-    // }
-    proc softmaxParts(t: Tensor(?rank)) {
-        const m = max reduce t.data;
-        var y = t;
-        y.data -= m;
-        foreach i in y.data.domain {
-            y.data[i] = Math.exp(y.data[i]);
-        }
-        const sum = + reduce y.data;
-        
-        return (y,sum,y / sum);
-    }
-
-    proc softmax(t: Tensor(?rank)) {
-        // const (exps, sum, expsOverSum) = softmaxParts(t);
-        // return expsOverSum;
-        const m = max reduce t.data;
-        var y = t;
-        y.data -= m;
-        foreach i in y.data.domain {
-            y.data[i] = Math.exp(y.data[i]);
-        }
-        const sum = + reduce y.data;
-        y.data /= sum;
-        return y;
-    }
-
 }
 
-
-
-
-/*
-
-// Have domain of 1d arrays as the index type, that indexes the data
-// var dimDom: domain(1,int) = {0..#dim}; // may change
-// var idxDom: domain([dimDom] int);
-// var data: [idxDom] real;
-
-record NDArray {
-    type eltType;
-    var _shapeDomain: domain(1,int);
-    var shape: [_shapeDomain] int;
-
-    var _dataDomain: domain(1,int);
-    var data: [_dataDomain] eltType;
-
-    proc init(type eltType, shape: [?d] int) {
-        this.eltType = eltType;
-        this._shapeDomain = d;
-        this.shape = shape;
-        const size = * reduce shape;
-        this._dataDomain = {0..#size};
-        
-    }
-
-    proc this(is: int ...?n) {
-        var idxs: [0..#n] int;
-        for i in 0..#(n - 1) {
-            idxs[i] = is[i] * (* reduce this.shape[i+1..]);
-        }
-        idxs[n - 1] = is[n - 1];
-        return this.data[idxs];
-    }
-}
-
-
-
-class TensorClass {
-    type eltType;
-    var array: NDArray(eltType);
-
-
-}
-
-type Tensor = shared TensorClass(?);
-
-
-
-
-
-
-
-
-// var a = new NDArray(int,[5,5]);
-// writeln(a[1,1]);
-*/
