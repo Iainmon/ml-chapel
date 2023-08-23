@@ -124,7 +124,7 @@ proc train(data: [] (Tensor(3),int), lr: real = 0.005) {
 config const numTrainImages = 50000;
 config const numTestImages = 100;
 
-config const learnRate = 0.5; // 0.05;
+config const learnRate = 0.05; // 0.05;
 config const batchSize = 100;
 config const numEpochs = 30;
 
