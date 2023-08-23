@@ -75,8 +75,8 @@ config const dataPath = "./data";
 
 var net = new torch.Network(
     (
-        new torch.Conv(1,12,5,stride=2),
-        new torch.Conv(12,32,5,stride=1),
+        new torch.Conv(1,32,5,stride=2),
+        new torch.Conv(32,64,5,stride=1),
         new torch.MaxPool(),
         new torch.SoftMax(10)
     )
@@ -135,7 +135,7 @@ config const numTestImages = 1000;
 
 config const learnRate = 0.03; // 0.05;
 config const batchSize = 50;
-config const numEpochs = 40;
+config const numEpochs = 60;
 
 
 const numImages = numTrainImages + numTestImages;
