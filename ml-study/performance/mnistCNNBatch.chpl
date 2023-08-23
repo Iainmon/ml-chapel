@@ -126,7 +126,7 @@ config const numTestImages = 100;
 
 config const learnRate = 0.5; // 0.05;
 config const batchSize = 50;
-config const numEpochs = 30;
+config const numEpochs = 15;
 
 
 const numImages = numTrainImages + numTestImages;
@@ -157,8 +157,11 @@ for epoch in 0..#numEpochs {
         const batch = trainingData[batchRange];
         const (loss,acc) = train(batch,learnRate);
         // writeln("[",i + 1," of ", trainingData.size / batchSize, "] Loss ", loss / batchSize," Accuracy ", acc ," / ", batchSize);
-
+        IO.stdout.write("\r","[",i + 1," of ",trainingData.size / batchSize,"] (loss: ", loss / batchSize, ", accuracy: ", acc, " / ", batchSize, ")");
+        IO.stdout.flush();
     }
+    IO.stdout.write("\n");
+    IO.stdout.flush();
 
     writeln("Evaluating...");
 
