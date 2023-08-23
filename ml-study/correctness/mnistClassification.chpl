@@ -42,7 +42,7 @@ var net2 = new chai.Network(
 MNISTTester.test(
     network=net2,
     numImages=numImages,
-    modelPath=modelDir + "mnist" + net2.signature() + ".model"
+    modelPath=modelDir + "mnist" + net2.signature() + ".model" // this is the lenet output
 );
 
 

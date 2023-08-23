@@ -53,6 +53,11 @@ mnistCNNTrain: clean
 	echo "Build complete."
 	cd ml-study/performance && ../../build/mnistCNNTrain
 
+mnistCNNDeep: clean
+	chpl $(fast_flag) -M ml-study/lib $(blas_libs)  $(output)/mnistCNNDeep ml-study/performance/mnistCNNDeep.chpl
+	echo "Build complete."
+	cd ml-study/performance && ../../build/mnistCNNDeep
+
 
 torch: clean
 	chpl $(fast_flag) $(my_lib) $(blas_libs)  $(output)/Torch week9/Torch.chpl
