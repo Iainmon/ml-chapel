@@ -10,7 +10,7 @@ import BinaryIO;
 
 tn.seedRandom(0);
 
-config const dataPath = "ml-study/performance/data";
+config const dataPath = "./data";
 
 // var net = new torch.Network(
 //     (
@@ -121,19 +121,19 @@ proc train(data: [] (Tensor(3),int), lr: real = 0.005) {
 
 
 
-config const numTrainImages = 20000;
+config const numTrainImages = 50000;
 config const numTestImages = 100;
 
 config const learnRate = 0.5; // 0.05;
-config const batchSize = 50;
-config const numEpochs = 15;
+config const batchSize = 100;
+config const numEpochs = 30;
 
 
 const numImages = numTrainImages + numTestImages;
 
-var imageRawData = MNIST.loadImages(numImages);
+var imageRawData = MNIST.loadImages(numImages,"../lib/mnist/data/train-images-idx3-ubyte");
 imageRawData -= 0.5;
-var (labels,labelVectors) = MNIST.loadLabels(numImages);
+var (labels,labelVectors) = MNIST.loadLabels(numImages,"../lib/mnist/data/train-labels-idx1-ubyte");
 
 
 var images = [im in imageRawData] (new Tensor(im)).reshape(28,28,1);
@@ -176,5 +176,5 @@ for epoch in 0..#numEpochs {
 
     writeln("End of epoch ", epoch + 1, " Loss ", loss / testingData.size, " Accuracy ", numCorrect, " / ", testingData.size);
 
-    net.save( dataPath + "/mnist_cnn_epoch_" + epoch:string + ".model");
+    net.save( dataPath + "/mnist_cnn_epoch_" + (epoch + 1):string + ".model");
 }

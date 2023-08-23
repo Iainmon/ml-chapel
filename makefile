@@ -34,9 +34,15 @@ mnistCNN: clean
 	./build/mnistCNN
 
 mnistCNNBatch: clean
-	chpl $(fast_flag) $(my_lib) -M ml-study/lib $(blas_libs)  $(output)/mnistCNN ml-study/performance/mnistCNNBatch.chpl
+	chpl $(fast_flag)  -M ml-study/lib $(blas_libs)  $(output)/mnistCNN ml-study/performance/mnistCNNBatch.chpl
 	echo "Build complete."
-	./build/mnistCNN
+	cd ml-study/performance && ../../build/mnistCNN > mnistCNNBatch.good
+
+mnistClassificationTest: clean
+	chpl $(fast_flag) -M ml-study/lib $(blas_libs)  $(output)/mnistClassification ml-study/correctness/mnistClassification.chpl
+	echo "Build complete."
+	cd ml-study/correctness && ../../build/mnistClassification > mnistClassification.good
+
 
 torch: clean
 	chpl $(fast_flag) $(my_lib) $(blas_libs)  $(output)/Torch week9/Torch.chpl

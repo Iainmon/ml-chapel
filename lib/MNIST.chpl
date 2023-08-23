@@ -3,8 +3,7 @@
 use IO;
 use BinaryIO;
 
-proc loadImages(num: int) {
-    const fileName = "week2/emnist/data/train-images-idx3-ubyte";
+proc loadImages(num: int, fileName: string = "week2/emnist/data/train-images-idx3-ubyte") {
 
     var deserializer = new BinaryDeserializer(ioendian.big);
 
@@ -46,8 +45,7 @@ proc loadImages(num: int) {
 }
 
 
-proc loadLabels(num: int) {
-    const fileName = "week2/emnist/data/train-labels-idx1-ubyte";
+proc loadLabels(num: int, fileName: string = "week2/emnist/data/train-labels-idx1-ubyte") {
 
     var deserializer = new BinaryDeserializer(ioendian.big);
 
