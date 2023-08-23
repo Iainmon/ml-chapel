@@ -38,11 +38,20 @@ mnistCNNBatch: clean
 	echo "Build complete."
 	cd ml-study/performance && ../../build/mnistCNN > mnistCNNBatch.good
 
+LeNet: clean
+	chpl $(fast_flag)  -M ml-study/lib $(blas_libs)  $(output)/LeNet ml-study/performance/LeNet.chpl
+	echo "Build complete."
+	cd ml-study/performance && ../../build/LeNet
 
 mnistClassificationTest: clean
 	chpl $(fast_flag) -M ml-study/lib $(blas_libs)  $(output)/mnistClassification ml-study/correctness/mnistClassification.chpl
 	echo "Build complete."
-	cd ml-study/correctness && ../../build/mnistClassification > mnistClassification.good
+	cd ml-study/correctness && ../../build/mnistClassification
+
+mnistCNNTrain: clean
+	chpl $(fast_flag) -M ml-study/lib $(blas_libs)  $(output)/mnistCNNTrain ml-study/performance/mnistCNNTrain.chpl
+	echo "Build complete."
+	cd ml-study/performance && ../../build/mnistCNNTrain
 
 
 torch: clean

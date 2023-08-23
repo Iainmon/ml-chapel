@@ -101,6 +101,9 @@ module Chai {
             weights.read(fr);
             uninitialized = false;
         }
+        proc signature(): string {
+            return "Dense(" + outputSize + ")";
+        }
     }
 
     record Sigmoid {
@@ -272,6 +275,11 @@ module Chai {
             if nf != numFilters then tn.err("Conv read: numFilters mismatch");
             filters.read(fr);
         }
+
+        proc signature(): string {
+            const (outChannels,kh,kw,inChannels) = filters.shape;
+            return "Conv(" + inChannels:string + "," + outChannels:string + ",kernel=" + kw:string + ",stride=" + stride:string + ",padding=" + padding:string + ")";
+        }
     }
 
     record MaxPool {
@@ -347,6 +355,10 @@ module Chai {
             // fw.write("[maxpool]");
         }
         proc read(fr: IO.fileReader) throws { }
+
+        proc signature(): string {
+            return "MaxPool()";
+        }
     }
 
     record ReLU {
@@ -375,6 +387,10 @@ module Chai {
         proc resetGradients() { }
         proc write(fw: IO.fileWriter) throws { }
         proc read(fr: IO.fileReader) throws { }
+
+        proc signature(): string {
+            return "ReLU(" + a:string + ")";
+        }
     }
 
     record Flatten {
@@ -390,6 +406,10 @@ module Chai {
         proc resetGradients() { }
         proc write(fw: IO.fileWriter) throws { }
         proc read(fr: IO.fileReader) throws { }
+
+        proc signature(): string {
+            return "Flatten()";
+        }
     }
 
     record SoftMax {
@@ -536,6 +556,10 @@ module Chai {
             uninitialized = false;
         }
 
+        proc signature(): string {
+            return "SoftMax(" + outputSize:string + ")";
+        }
+
     }
 
 
@@ -674,6 +698,16 @@ module Chai {
                 layers[i].read(fr);
             }
             return this;
+        }
+
+        proc signature(): string {
+            var sig = "[";
+            for param i in 0..#(layers.size) {
+                sig += layers[i].signature();
+                if i != layers.size - 1 then sig += ",";
+            }
+            sig += "]";
+            return sig;
         }
 
 

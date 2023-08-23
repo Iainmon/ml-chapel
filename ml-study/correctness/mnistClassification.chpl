@@ -1,5 +1,5 @@
 
-import Chai as torch;
+import Chai as chai;
 import Tensor as tn;
 use Tensor;
 import Math;
@@ -7,54 +7,43 @@ import MNIST;
 import Random;
 import IO;
 import BinaryIO;
+import MNISTTester;
 
 
 tn.seedRandom(0);
 
-config const modelPath = "../performance/data/mnist_cnn_epoch_14.model";
+config const modelDir = "../lib/models/";
 config const numImages = 30000;
 
-var net = new torch.Network(
+var net1 = new chai.Network(
     (
-        new torch.Conv(1,12,3,stride=2),
-        new torch.Conv(12,16,4),
-        // new torch.ReLU(),
-        new torch.MaxPool(),
-        new torch.SoftMax(10)
+        new chai.Conv(1,12,3,stride=2),
+        new chai.Conv(12,16,4),
+        new chai.MaxPool(),
+        new chai.SoftMax(10)
     )
 );
 
-net.load(modelPath);
+MNISTTester.test(
+    network=net1,
+    numImages=numImages,
+    modelPath= modelDir + "mnist" + net1.signature() + ".model"
+);
 
-proc forward(x: Tensor(?), lb: int) {
-    const output = net.forwardProp(x);
-    const loss = -Math.log(output[lb]);
-    const acc = tn.argmax(output.data) == lb;
-    return (output,loss,acc);
-}
+var net2 = new chai.Network(
+    (
+        new chai.Conv(1,32,5,stride=2),
+        new chai.Conv(32,64,5,stride=1),
+        new chai.MaxPool(),
+        new chai.SoftMax(10)
+    )
+);
 
-var imageRawData = MNIST.loadImages(numImages,"../lib/mnist/data/train-images-idx3-ubyte");
-imageRawData -= 0.5;
-const (labels,labelVectors) = MNIST.loadLabels(numImages,"../lib/mnist/data/train-labels-idx1-ubyte");
-
-
-const images = [im in imageRawData] (new Tensor(im)).reshape(28,28,1);
-const testingData = for a in zip(images,labels) do a;
-
-var loss = 0.0;
-var acc = 0;
-
-forall (im,lb) in testingData with (+ reduce loss, + reduce acc) {
-    const (output,loss_,acc_) = forward(im,lb);
-    loss += loss_;
-    acc += if acc_ then 1 else 0;
-}
-
-loss /= numImages;
-
-writeln("Loss: ",loss," Accuracy: ",acc ," / ", numImages, " ", (acc * 100):real / (numImages:real), " %");
-
-
+MNISTTester.test(
+    network=net2,
+    numImages=numImages,
+    modelPath=modelDir + "mnist" + net2.signature() + ".model"
+);
 
 
 
