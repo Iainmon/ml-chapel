@@ -1,13 +1,11 @@
 
 module Chai {
     
-    // import Tensor.Tensor;
     import Tensor as tn;
     import IO;
     import BinaryIO;
 
     use Tensor;
-    // import Tensor;
     
 
     record Dense {
@@ -59,12 +57,6 @@ module Chai {
             return activations;
         }
 
-        // proc backward(delta: Tensor(1)): Tensor(1) {
-        //     const newDelta = weights.transpose() * delta;
-        //     biasGrad    = newDelta;
-        //     weightsGrad = newDelta * lastInput.transpose();
-        //     return newDelta;
-        // }
 
         proc backward(delta: Tensor(1), input: Tensor(1)): Tensor(1) {
             const newDelta = weights.transpose() * delta;
@@ -197,28 +189,8 @@ module Chai {
                 filter.data = filters[f,..,..,..];
                 convs[..,..,f] = correlate(filter=filter,input=images,stride=stride,padding=padding);
             }
-            // convs = tn.relu(convs);
             convs.data /= (inChannels:real);
             return convs;
-            
-            /* // this works
-            const newH = h - (kh - 1);
-            const newW = w - (kw - 1);
-            tn.debugWrite("[enter conv forward]");
-            var convs: [0..#newH, 0..#newW, 0..#outChannels] real;
-            // Perhaps more efficient
-            forall f in 0..#outChannels {
-                const filter = filters.data[f,..,..,..];
-                forall (i,j) in tn.cartesian(0..#newH, 0..#newW) {
-                    const region = images[i..#kh, j..#kw,..];
-                    const conv = region * filter;
-                    convs[i,j,f] += + reduce conv;
-                }
-            }
-
-            tn.debugWrite("[exit conv forward]\n");
-            return new Tensor(convs);
-            */
         }
     
 
@@ -227,7 +199,6 @@ module Chai {
             const (outChannels,kh,kw,inChannels) = filters.shape;
             const (dh,dw,dc) = delta.shape;
 
-            // writeln("backward");
 
             if dc != outChannels then tn.err("Conv backward: outChannels mismatch");
             if channels != inChannels then tn.err("Conv backward: inChannels mismatch");
@@ -249,217 +220,6 @@ module Chai {
                 dL_dX[m,n,ci] = sum;
             }
             return dL_dX;
-
-// /* // This works
-//             const hMargin = kh / 2;
-//             const wMargin = kw / 2;
-
-//             const hPadding = h - dh;
-//             const wPadding = w - dw;
-
-//             if dc != outChannels then tn.err("Conv backward: outChannels mismatch");
-
-//             if channels != inChannels then tn.err("Conv backward: inChannels mismatch");
-
-//             tn.debugWrite("[enter conv backward]");
-
-//             var dL_dF_Cout_Cin: [0..#outChannels,0..#kh,0..#kw,0..#inChannels] real;
-//             forall Cin in 0..#inChannels with (+ reduce dL_dF_Cout_Cin) {
-
-//                 // var dL_dF_Cout: [0..#outChannels, 0..#kh, 0..#kw] real;
-
-//                 forall Cout in 0..#outChannels with (+ reduce dL_dF_Cout_Cin) {
-
-//                     /* Compute each local filter gradient */
-//                     const dL_dY = delta[..,..,Cout];
-//                     const X = images[..,..,Cin];
-//                     var dL_dF: [0..#kh, 0..#kw] real;
-
-//                     // dL_dF[n,m] = sum_i,j dL_dY[i,j] * dY[i,j]_dF[n,m]
-//                     // dY[i,j]_dF[n,m] = X[i + n, j + m]
-//                     // => dL_dF[n,m] = sum_i,j dL_dY[i,j] * X[i + n, j + m]
-
-//                     foreach (m,n) in dL_dF.domain {
-//                         // const dYij_dFmn = if X.domain.contains((i + m, j + n)) then X[i + m, j + n] else 0.0;
-//                         dL_dF[m,n] = + reduce for (i,j) in dL_dY.domain do 
-//                                                 dL_dY[i,j] * if X.domain.contains((i + m, j + n)) then X[i + m, j + n] else 0.0;
-//                     }
-
-//                     // dL_dF_Cout[Cout,..,..] = dL_dF;
-//                     dL_dF_Cout_Cin[Cout,..,..,Cin] += dL_dF;
-
-//                 }
-//                 // dL_dF_Cout_Cin[..,..,..,Cin] += dL_dF_Cout;
-
-//             }
-//             filtersGrad.data += dL_dF_Cout_Cin;
-//             tn.debugWrite("[done conv filters backward]");
-
-//             var dL_dX_Cin: [0..#h, 0..#w, 0..#inChannels] real;
-
-//             if this.isFirstLayer {
-//                 tn.debugWrite("[exit conv input backward]\n");
-//                 return new Tensor(dL_dX_Cin);
-//             }
-//             const D = {0..#dh,0..#dw};
-//             forall Cin in 0..#inChannels with (+ reduce dL_dX_Cin) {
-//                 forall Cout in 0..#outChannels with (+ reduce dL_dX_Cin) {
-
-//                     // const dL_dY = delta[..,..,Cout];
-//                     // const X = images[..,..,Cin];
-//                     const F = filters[Cout,..,..,Cin];
-//                     var dL_dX: [0..#h, 0..#w] real;
-
-//                     // dL_dX[n,m] = sum_i,j dL_dY[i,j] * dY[i,j]_dX[n,m]
-//                     // dY[i,j]_dX[n,m] = F[m - i, n - j]
-                    
-
-//                     foreach (m,n) in dL_dX.domain {
-
-//                         dL_dX[m,n] = + reduce for (i,j) in D do delta[i,j,Cout] * if F.domain.contains((m - i, n - j)) then F[m - i, n - j] else 0.0;
-
-//                         // dL_dX[m,n] = + reduce for (i,j) in dL_dY.domain do dL_dY[i,j] * if F.domain.contains((m - i, n - j)) then F[m - i, n - j] else 0.0;
-//                     }
-
-//                     dL_dX_Cin[..,..,Cin] += dL_dX;
-//                 }
-//             }
-//             tn.debugWrite("[exit conv input backward]\n");
-//             return new Tensor(dL_dX_Cin);
-// */
-
-
-
-/*
-
-            var grad: [0..#h, 0..#w, 0..#inChannels] real;
-            // This seems to be slow on large images
-
-            forall fo in 0..#outChannels {
-                const dL_dO = delta[..,..,fo];
-                forall fi in 0..#inChannels {
-                    // Calculate filter gradients
-                    const X = images[..,..,fi];
-                    const dL_dF = tn.convolve(dL_dO, X);
-                    filtersGrad.data[fo,..,..,fi] += dL_dF;
-
-                    // Calculate input gradients
-                    // const F = filters.data[fo,..,..,fi]; // pass in directly.
-                    // Y[hMargin..#h, wMargin..#w] = F;
-                    // const dL_dX = tn.convolveRotate(dL_dO, Y);
-                    // grad[..,..,fi] += dL_dX;
-                }
-            }
-
-            if this.isFirstLayer then return tn.zeros(0,0,0);
-            tn.debugWrite("[computing input gradient]");
-
-            // Probably correct, but doubt it
-            forall (i,j,k) in delta.data.domain with (ref this) {
-                forall c in 0..#inChannels with (ref this) {
-                    const region = images.data[i..#kh, j..#kw,c];
-                    const filter = filters.data[k,..,..,c];
-                    const conv = region * filter;
-                    grad[i,j,c] += delta[i,j,k] * + reduce conv;
-                }
-            }
-
-            tn.debugWrite("[exit conv backward]\n");
-
-
-            return new Tensor(grad);
-*/
-            /*
-            const newH = h - (kh - 1);
-            const newW = w - (kw - 1);
-            // possibly efficient implementation unsure about correctness.
-            var grad: [0..#h, 0..#w, 0..#channels] real;
-            forall (i,j,k) in delta.data.domain {
-                forall c in 0..#inChannels {
-                    const region = images[i..#3, j..#3,c];
-                    const filter = filters.data[k,..,..,c];
-                    const conv = region * filter;
-                    filtersGrad.data[k,..,..,c] += delta[i,j,k] * region;
-                    grad[i,j,c] += delta[i,j,k] * + reduce conv;
-                }
-            }
-            const output = new Tensor(grad);
-            return output;
-*/
-        }
-
-        proc forwardProp_(image: Tensor(2)): Tensor(3) {
-            const (h,w) = image.shape;
-
-            // Python analog (slow)
-            /* var output = tn.zeros(h-2,w-2,numFilters);
-            for (region,i,j) in regions(x) {
-                // var filterResults = new Tensor(numFilters,3,3);
-                // var filterResults = [i in 0..#numFilters] region * new Tensor(filters[i,..,..]);
-                var convSums: [0..#numFilters] real;
-                forall k in 0..#numFilters {
-                    const filter = filters.data[k,..,..];
-                    const conv = region * filter;
-                    convSums[k] = + reduce conv;
-                }
-                output[i,j,..] = convSums;
-            }*/
-
-            // Using tensor type (faster?)
-            /*var output = tn.zeros(h-2,w-2,numFilters);
-            forall i in 0..#(h-2) with (ref output) {
-                forall j in 0..#(w-2) with (ref output) {
-                    const region = image[i..#3, j..#3];
-                    forall k in 0..#numFilters with (ref output) {
-                        const filter = filters.data[k,..,..];
-                        const conv = region * filter;
-                        output.data[i,j,k] = + reduce conv;
-                    }
-                }
-            }*/
-
-            // Using arrays (optimal)
-            var convs: [0..#(h-2), 0..#(w-2), 0..#numFilters] real;
-            forall (i,j,k) in convs.domain {
-                const region = image[i..#3, j..#3];
-                const filter = filters.data[k,..,..];
-                const conv = region * filter;
-                convs[i,j,k] = + reduce conv;
-            }
-            const output = new Tensor(convs);
-
-            return output;
-        }
-
-        proc backward_(delta: Tensor(3), image: Tensor(2)): Tensor(2) {
-            const (h,w) = image.shape;
-
-            // Using tensor type (faster?)
-            /* var output = tn.zeros(h,w);
-            forall i in 0..#(h-2) with (ref output) {
-                forall j in 0..#(w-2) with (ref output) {
-                    const region = image[i..#3, j..#3];
-                    forall k in 0..#numFilters with (ref output) {
-                        const filter = filters.data[k,..,..];
-                        const conv = region * filter;
-                        filtersGrad.data[k,..,..] += delta.data[i,j,k] * region;
-                        output.data[i,j] += delta.data[i,j,k] * + reduce conv;
-                    }
-                }
-            }*/
-            
-            // Using arrays (optimal)
-            var grad: [0..#h, 0..#w] real;
-            forall (i,j,k) in delta.data.domain with (ref this) {
-                const region = image[i..#3, j..#3];
-                const filter = filters[k,..,..];
-                const conv = region * filter;
-                filtersGrad[k,..,..] += delta[i,j,k] * region;
-                grad[i,j] += delta[i,j,k] * + reduce conv;
-            }
-            const output = new Tensor(grad);
-
-            return output;
         }
 
         proc backward(deltas: [] Tensor(3), imagess: [] Tensor(3)): [] Tensor(3) {
@@ -495,8 +255,6 @@ module Chai {
         }
 
         proc optimize(mag: real(64)) {
-            const (outChannels,kh,kw,inChannels) = filters.shape;
-            // filters -= (mag / (inChannels:real)) * filtersGrad;
             filters -= mag * filtersGrad;
 
         }
@@ -518,19 +276,6 @@ module Chai {
 
     record MaxPool {
 
-        iter regions(convs: Tensor(3)) {
-            const (h,w,numFilters) = convs.shape;
-            const newH: int = h / 2;
-            const newW: int = w / 2;
-
-            for i in 0..#newH {
-                for j in 0..#newW {
-                    var region = convs[i*2..#2, j*2..#2, ..];
-                    yield (region,i,j);
-                }
-            }
-        }
-
         proc forwardProp(batch: [] Tensor(3)): [] Tensor(3) {
             const batchSize = batch.size;
             var pools: [0..#batchSize] Tensor(3);
@@ -545,26 +290,7 @@ module Chai {
             const newH: int = h / 2;
             const newW: int = w / 2;
 
-            // Python analog (slow)
-            /*var output = tn.zeros(newH,newW,numFilters);
-            for (region,i,j) in regions(convs) {
-                forall k in 0..#numFilters with (ref output) {
-                    output[i,j,k] = max reduce region[..,..,k];
-                }
-            }*/
-
-            // Using tensor type (faster?)
-            /*var output = tn.zeros(newH,newW,numFilters);
-            forall i in 0..#newH with (ref output) {
-                forall j in 0..#newW with (ref output) {
-                    const region = convs[i*2..#2, j*2..#2, ..];
-                    forall k in 0..#numFilters with (ref output) {
-                        output[i,j,k] = max reduce region[..,..,k];
-                    }
-                }
-            }*/
-
-            // Using arrays (optimal)
+            // Using arrays
             var pools: [0..#newH, 0..#newW, 0..#numFilters] real;
             forall (i,j,k) in pools.domain {
                 const region = convs[i*2..#2, j*2..#2, ..];
@@ -599,30 +325,8 @@ module Chai {
                 const (maxI,maxJ) = argmax(region);
                 grad[i*2+maxI,j*2+maxJ,k] = delta[i,j,k];
 
-
-                // const region = convs[i*2..#2, j*2..#2, ..];
-                // const maxes = [k_ in 0..#numFilters] max reduce region[..,..,k_];
-                // const max = max reduce region [..,..,k];
-
-                // for (i2,j2,k2) in region.domain {
-                //     if region[i2,j2,k2] == maxes[k] then {
-                //         grad[i*2+i2,j*2+j2,k2] = delta[i,j,k];
-                //     }
-                // }
             }
             const output = new Tensor(grad);
-
-            // var output = tn.zeros(h,w,numFilters);
-
-            // forall i in 0..#newH with (ref output) {
-            //     forall j in 0..#newW with (ref output) {
-            //         const region = convs[i*2..#2, j*2..#2, ..];
-            //         forall k in 0..#numFilters with (ref output) {
-            //             const maxIndex = argmax reduce region[..,..,k];
-            //             output[i*2 + maxIndex[0], j*2 + maxIndex[1], k] = delta[i,j,k];
-            //         }
-            //     }
-            // }
 
             return output;
         }
@@ -674,20 +378,9 @@ module Chai {
     }
 
     record Flatten {
-        // param rank: int;
-        // var _domain: domain(rank,int);
-        // var uninitialized = true;
 
-        // proc init(param rank: int) {
-        //     this.rank = rank;
-        //     this._domain = tn.emptyDomain(rank);
-        // }
         proc init() { }
         proc forwardProp(input: Tensor(?inRank)): Tensor(1) {
-            // if uninitialized {
-            //     _domain = input.domain;
-            //     uninitialized = false;
-            // }
             return input.flatten();
         }
         proc backward(delta: Tensor(1), input: Tensor(?inRank)): Tensor(inRank) {
@@ -754,23 +447,14 @@ module Chai {
             const flattened = input.flatten();
             const z = (weights * flattened) + biases;
             return tn.softmax(z);
-            // const exp = tn.exp(z);
-            // const expSum = + reduce exp.data;
-
-            // tn.debugWrite("[exit softmax forward]\n");
-
-            // return exp / expSum;
         }
 
         proc backward(delta: Tensor(1), input: Tensor(?outRank)): Tensor(outRank) {
             const flattened = input.flatten();
             const Z = (weights * flattened) + biases;
             const (exp,expSum,softmax) = tn.softmaxParts(Z);
-            // const exp = tn.exp(Z);
-            // const expSum = + reduce exp.data;
-            // const softmax = exp / expSum;
-            const dL_dOut = delta;
 
+            const dL_dOut = delta;
 
             var nonZeroIdx: int = -1;
             for i in delta.data.domain do
@@ -793,25 +477,10 @@ module Chai {
             const dL_dB: Tensor(1) = dL_dZ * dZ_dB;
             const dL_dIn: Tensor(1) = dZ_dIn.transpose() * dL_dZ; // this is the problem
 
-            // writeln("weights: ", weights.shape);
-            // writeln("dL_dW: ", dL_dW.shape);
-            weightsGrad += dL_dW; // this might need to be dL_dW.transpose(), along with line 363 alternative
-            // writeln("biases: ", biases.shape);
-            // writeln("dL_dIn: ", dL_dIn.shape);
+            weightsGrad += dL_dW;
             biasesGrad += dL_dB;
 
-            // return dL_dIn.reshape((...input.shape));
             return dL_dIn.reshape(input.domain);
-
-
-            // const (m,n) = weights.shape;
-            // const grad: [0..#m, 0..#n] real;
-
-            // forall i in grad.domain {
-            //     grad[i,j] = delta[j] * softmax[i];
-            // }
-
-            // return grad.reshape(convs.shape);
         }
 
         proc backward(deltas: [] Tensor(1), inputs: [] Tensor(?)): [] Tensor(1) {
@@ -858,7 +527,6 @@ module Chai {
         }
 
         proc write(fw: IO.fileWriter) throws {
-            // fw.write("[softmax]");
             weights.write(fw);
             biases.write(fw);
         }
@@ -872,7 +540,6 @@ module Chai {
 
 
     proc forwardPropHelp(ref layers, param n: int, x: Tensor(?)) {
-        // writeln("forwardPropHelp: ", n, " ", x.shape);
         if n == layers.size then return x;
 
         const xNext = layers[n].forwardProp(x);
@@ -893,13 +560,9 @@ module Chai {
     }
 
     proc backwardForwardPropHelp(ref layers, param n: int, x: Tensor(?), lastDelta: Tensor(?)) {
-        // if n == layers.size then return lastDelta;
 
         if n == layers.size - 1 {
             return layers[n].backward(lastDelta,x);
-            // const d = layers[n].backward(lastDelta,x);
-            // writeln("Last layer delta:", d);
-            // return d;
         }
 
         const lastInput = layers[n].forwardProp(x);
@@ -909,9 +572,6 @@ module Chai {
 
     proc backwardForwardPropHelpBatch(ref layers, param n: int, xs, lastDeltas) {
         if n == layers.size { return lastDeltas; }
-        // if n == layers.size - 1 {
-        //     return layers[n].backward(lastDeltas,xs);
-        // }
 
         const lastInputs = layers[n].forwardProp(xs);
         const deltas = backwardForwardPropHelpBatch(layers, n+1, lastInputs, lastDeltas);
@@ -1021,32 +681,8 @@ module Chai {
     }
 
     proc main() {
-        // var n = new Network(
-        //     (
-        //         new Dense(3,3),
-        //         new Sigmoid(3),
-        //         new Dense(3,6),
-        //         new Sigmoid(6)
-        //     )
-        // );
 
-        // const inv: [0..#3] real = [1,2,3];
-        // const input = new Tensor(inv);
-
-        // var output = n.forwardProp(input);
-        // var reversedInput = n.backwardProp(output);
-        
-        // writeln(input);
-        // writeln(output);
-        // writeln(reversedInput);
-
-        // const t = tn.randn(3,4);
-        // writeln(t);
-
-        // var shape = (3,4,5);
-        // for i in 0..<(3 * 4 * 5) {
-        //     writeln(i, " ", tn.nbase(shape,i));
-        // }
+        // Don't expect this to work
 
         var n2 = new Network(
             (
@@ -1061,9 +697,6 @@ module Chai {
         writeln(image);
         const convs = n2.forwardProp(image);
         writeln(convs);
-        // var reversedImage = n2.backwardProp(convs);
-        // writeln(reversedImage);
-        // n2.train([(image,convs)],0.5);
 
     }
 }
