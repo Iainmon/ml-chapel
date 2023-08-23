@@ -71,17 +71,26 @@ config const dataPath = "./data";
 //         new torch.MaxPool(),
 //         new torch.SoftMax(10)
 //     )
-// );
+// ); // 80% at epoch 30
 
 var net = new torch.Network(
     (
-        new torch.Conv(1,12,3,stride=2),
-        new torch.Conv(12,16,4),
-        // new torch.ReLU(),
+        new torch.Conv(1,12,5,stride=2),
+        new torch.Conv(12,32,5,stride=1),
         new torch.MaxPool(),
         new torch.SoftMax(10)
     )
 );
+
+
+// var net = new torch.Network(
+//     (
+//         new torch.Conv(1,10,5,stride=1),
+//         new torch.Conv(10,20,5,stride=1),
+//         new torch.MaxPool(),
+//         new torch.SoftMax(10)
+//     )
+// );
 
 proc forward(x: Tensor(?), lb: int) {
     const output = net.forwardProp(x);
@@ -122,10 +131,10 @@ proc train(data: [] (Tensor(3),int), lr: real = 0.005) {
 
 
 config const numTrainImages = 50000;
-config const numTestImages = 100;
+config const numTestImages = 1000;
 
 config const learnRate = 0.05; // 0.05;
-config const batchSize = 100;
+config const batchSize = 50;
 config const numEpochs = 30;
 
 

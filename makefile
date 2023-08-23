@@ -38,6 +38,7 @@ mnistCNNBatch: clean
 	echo "Build complete."
 	cd ml-study/performance && ../../build/mnistCNN > mnistCNNBatch.good
 
+
 mnistClassificationTest: clean
 	chpl $(fast_flag) -M ml-study/lib $(blas_libs)  $(output)/mnistClassification ml-study/correctness/mnistClassification.chpl
 	echo "Build complete."
