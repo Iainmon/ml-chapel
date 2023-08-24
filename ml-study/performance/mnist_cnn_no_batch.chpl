@@ -6,11 +6,11 @@ import MNIST;
 import Random;
 import IO;
 import BinaryIO;
-
+import Time;
 
 tn.seedRandom(0);
 
-config const dataPath = "./data";
+config const dataPath = "ml-study/performance/data";
 
 // var net = new torch.Network(
 //     (
@@ -63,34 +63,14 @@ config const dataPath = "./data";
 //     )
 // );
 
-// var net = new torch.Network(
-//     (
-//         new torch.Conv(1,8,4,stride=2),
-//         new torch.Conv(8,12,5),
-//         // new torch.ReLU(),
-//         new torch.MaxPool(),
-//         new torch.SoftMax(10)
-//     )
-// ); // 80% at epoch 30
-
 var net = new torch.Network(
     (
-        new torch.Conv(1,32,5,stride=2),
-        new torch.Conv(32,64,5,stride=1),
+        new torch.Conv(1,8,4,stride=2),
+        new torch.Conv(8,12,5),
         new torch.MaxPool(),
         new torch.SoftMax(10)
     )
 );
-
-
-// var net = new torch.Network(
-//     (
-//         new torch.Conv(1,10,5,stride=1),
-//         new torch.Conv(10,20,5,stride=1),
-//         new torch.MaxPool(),
-//         new torch.SoftMax(10)
-//     )
-// );
 
 proc forward(x: Tensor(?), lb: int) {
     const output = net.forwardProp(x);
@@ -107,21 +87,16 @@ proc train(data: [] (Tensor(3),int), lr: real = 0.005) {
     var acc = 0;
 
     net.resetGradients();
-    var gradients: [0..#size] Tensor(1,real);
-
     forall ((im,lb),i) in zip(data,0..) with (ref net,+ reduce loss, + reduce acc) {
         const (output,l,a) = forward(im,lb);
         var gradient = tn.zeros(10);
         gradient[lb] = -1.0 / output[lb];
         
-        gradients[i] = gradient;
-        // net.backwardProp(im,gradient);
+        net.backwardProp(im,gradient);
 
         loss += l;
         acc += if a then 1 else 0;
     }
-    const inputs = [im in data] im[0];
-    net.backwardPropBatch(inputs,gradients);
 
     net.optimize(lr / size);
 
@@ -130,19 +105,19 @@ proc train(data: [] (Tensor(3),int), lr: real = 0.005) {
 
 
 
-config const numTrainImages = 50000;
+config const numTrainImages = 20000;
 config const numTestImages = 1000;
 
-config const learnRate = 0.03; // 0.05;
-config const batchSize = 50;
-config const numEpochs = 60;
+config const learnRate = 0.005; // 0.05;
+config const batchSize = 10;
+config const numEpochs = 15;
 
 
 const numImages = numTrainImages + numTestImages;
 
-var imageRawData = MNIST.loadImages(numImages,"../lib/mnist/data/train-images-idx3-ubyte");
+var imageRawData = MNIST.loadImages(numImages);
 imageRawData -= 0.5;
-var (labels,labelVectors) = MNIST.loadLabels(numImages,"../lib/mnist/data/train-labels-idx1-ubyte");
+var (labels,labelVectors) = MNIST.loadLabels(numImages);
 
 
 var images = [im in imageRawData] (new Tensor(im)).reshape(28,28,1);
@@ -153,11 +128,12 @@ tn.shuffle(labeledImages);
 var trainingData = labeledImages[0..#numTrainImages];
 var testingData = labeledImages[numTrainImages..#numTestImages];
 
+var t = new Time.stopwatch();
+t.start();
 
 for epoch in 0..#numEpochs {
     
     writeln("Epoch ",epoch + 1);
-    net.forwardProp(trainingData[0][0]);
 
     tn.shuffle(trainingData);
 
@@ -165,12 +141,9 @@ for epoch in 0..#numEpochs {
         const batchRange = (i * batchSize)..#batchSize;
         const batch = trainingData[batchRange];
         const (loss,acc) = train(batch,learnRate);
-        // writeln("[",i + 1," of ", trainingData.size / batchSize, "] Loss ", loss / batchSize," Accuracy ", acc ," / ", batchSize);
-        IO.stdout.write("\r","[",i + 1," of ",trainingData.size / batchSize,"] (loss: ", loss / batchSize, ", accuracy: ", acc, " / ", batchSize, ")");
-        IO.stdout.flush();
+        writeln("[",i + 1," of ", trainingData.size / batchSize, "] Loss ", loss / batchSize," Accuracy ", acc ," / ", batchSize);
+
     }
-    IO.stdout.write("\n");
-    IO.stdout.flush();
 
     writeln("Evaluating...");
 
@@ -185,5 +158,9 @@ for epoch in 0..#numEpochs {
 
     writeln("End of epoch ", epoch + 1, " Loss ", loss / testingData.size, " Accuracy ", numCorrect, " / ", testingData.size);
 
-    net.save( dataPath + "/mnist_cnn_epoch_" + (epoch + 1):string + ".model");
+    if !perfTest then net.save( dataPath + "/mnist_cnn_epoch_" + epoch:string + ".model");
 }
+
+t.stop();
+
+if perfTest then writeln("time: ",t.elapsed());

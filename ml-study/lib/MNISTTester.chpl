@@ -6,7 +6,9 @@ import MNIST;
 import Random;
 import IO;
 import BinaryIO;
+import Time;
 
+config param perfTest = false;
 
 tn.seedRandom(0);
 
@@ -80,6 +82,8 @@ proc train(ref network,
     var trainingData = labeledImages[0..#numTrainImages];
     var testingData = labeledImages[numTrainImages..#numTestImages];
 
+    var t = new Time.stopwatch();
+    t.start();
 
     for epoch in 0..#numEpochs {
         
@@ -112,8 +116,10 @@ proc train(ref network,
 
         writeln("End of epoch ", epoch + 1, " Loss ", loss / testingData.size, " Accuracy ", numCorrect, " / ", testingData.size);
 
-        network.save(savePath);
+        if !perfTest then network.save(savePath);
     }
+
+    if perfTest then writeln("time: ", t.elapsed());
 
 }
 
@@ -129,6 +135,9 @@ proc test(ref network, numImages: int, modelPath: string) {
     const images = [im in imageRawData] (new Tensor(im)).reshape(28,28,1);
     const testingData = for a in zip(images,labels) do a;
 
+    var t = new Time.stopwatch();
+    t.start();
+
     var loss = 0.0;
     var acc = 0;
 
@@ -142,4 +151,7 @@ proc test(ref network, numImages: int, modelPath: string) {
 
     writeln("Loss: ",loss," Accuracy: ",acc ," / ", numImages, " ", (acc * 100):real / (numImages:real), " %");
 
+    t.stop();
+
+    if perfTest then writeln("time: ", t.elapsed());
 }

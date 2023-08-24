@@ -6,72 +6,23 @@ import MNIST;
 import Random;
 import IO;
 import BinaryIO;
+import Time;
 
+config param perfTest = false;
 
 tn.seedRandom(0);
 
-config const dataPath = "ml-study/performance/data";
-
-// var net = new torch.Network(
-//     (
-//         new torch.Conv(1,20,3),
-//         new torch.MaxPool(),
-//         // new torch.SoftMax(13 * 13 * 8,10)
-//         new torch.Conv(20,10,3),
-//         new torch.MaxPool(),
-//         new torch.SoftMax(5 * 5 * 10,10)
-//     )
-// );
-
-// var net = new torch.Network(
-//     (
-//         new torch.Conv(1,6,5),   // 24
-//         new torch.MaxPool(),     // 12
-//         new torch.Conv(6,16,5),  // 8
-//         new torch.MaxPool(),     // 4
-//         new torch.SoftMax(4 * 4 * 16,10)
-//     )
-// );
-
-
-// This works
-// var net = new torch.Network(
-//     (
-//         new torch.Conv(1,8,3),
-//         new torch.MaxPool(),
-//         new torch.SoftMax(13 * 13 * 8,10)
-//     )
-// );
-
-// var net = new torch.Network(
-//     (
-//         new torch.Conv(1,8,3),
-//         new torch.MaxPool(),
-//         new torch.Conv(8,8,3),
-//         new torch.MaxPool(),
-//         new torch.SoftMax(5 * 5 * 8,10)
-//     )
-// );
-
-// // THIS IS MY BENCHMARK
-// var net = new torch.Network(
-//     (
-//         new torch.Conv(1,8,7),
-//         new torch.Conv(8,12,5),
-//         new torch.MaxPool(),
-//         new torch.SoftMax(10)
-//     )
-// );
+config const dataPath = "./data";
 
 var net = new torch.Network(
     (
         new torch.Conv(1,8,4,stride=2),
         new torch.Conv(8,12,5),
-        // new torch.ReLU(),
         new torch.MaxPool(),
         new torch.SoftMax(10)
     )
 );
+
 
 proc forward(x: Tensor(?), lb: int) {
     const output = net.forwardProp(x);
@@ -81,23 +32,26 @@ proc forward(x: Tensor(?), lb: int) {
 }
 
 proc train(data: [] (Tensor(3),int), lr: real = 0.005) {
-    // writeln("Training on ",data.domain.size," images");
     const size = data.domain.size;
 
     var loss = 0.0;
     var acc = 0;
 
     net.resetGradients();
+    var gradients: [0..#size] Tensor(1,real);
+
     forall ((im,lb),i) in zip(data,0..) with (ref net,+ reduce loss, + reduce acc) {
         const (output,l,a) = forward(im,lb);
         var gradient = tn.zeros(10);
         gradient[lb] = -1.0 / output[lb];
         
-        net.backwardProp(im,gradient);
+        gradients[i] = gradient;
 
         loss += l;
         acc += if a then 1 else 0;
     }
+    const inputs = [im in data] im[0];
+    net.backwardPropBatch(inputs,gradients);
 
     net.optimize(lr / size);
 
@@ -107,18 +61,18 @@ proc train(data: [] (Tensor(3),int), lr: real = 0.005) {
 
 
 config const numTrainImages = 20000;
-config const numTestImages = 100;
+config const numTestImages = 1000;
 
 config const learnRate = 0.005; // 0.05;
-config const batchSize = 20;
-config const numEpochs = 12;
+config const batchSize = 10;
+config const numEpochs = 15;
 
 
 const numImages = numTrainImages + numTestImages;
 
-var imageRawData = MNIST.loadImages(numImages);
+var imageRawData = MNIST.loadImages(numImages,"../lib/mnist/data/train-images-idx3-ubyte");
 imageRawData -= 0.5;
-var (labels,labelVectors) = MNIST.loadLabels(numImages);
+var (labels,labelVectors) = MNIST.loadLabels(numImages,"../lib/mnist/data/train-labels-idx1-ubyte");
 
 
 var images = [im in imageRawData] (new Tensor(im)).reshape(28,28,1);
@@ -129,10 +83,13 @@ tn.shuffle(labeledImages);
 var trainingData = labeledImages[0..#numTrainImages];
 var testingData = labeledImages[numTrainImages..#numTestImages];
 
+var t = new Time.stopwatch();
+t.start();
 
 for epoch in 0..#numEpochs {
     
     writeln("Epoch ",epoch + 1);
+    net.forwardProp(trainingData[0][0]);
 
     tn.shuffle(trainingData);
 
@@ -140,9 +97,12 @@ for epoch in 0..#numEpochs {
         const batchRange = (i * batchSize)..#batchSize;
         const batch = trainingData[batchRange];
         const (loss,acc) = train(batch,learnRate);
-        writeln("[",i + 1," of ", trainingData.size / batchSize, "] Loss ", loss / batchSize," Accuracy ", acc ," / ", batchSize);
-
+        // writeln("[",i + 1," of ", trainingData.size / batchSize, "] Loss ", loss / batchSize," Accuracy ", acc ," / ", batchSize);
+        IO.stdout.write("\r","[",i + 1," of ",trainingData.size / batchSize,"] (loss: ", loss / batchSize, ", accuracy: ", acc, " / ", batchSize, ")");
+        IO.stdout.flush();
     }
+    IO.stdout.write("\n");
+    IO.stdout.flush();
 
     writeln("Evaluating...");
 
@@ -157,5 +117,9 @@ for epoch in 0..#numEpochs {
 
     writeln("End of epoch ", epoch + 1, " Loss ", loss / testingData.size, " Accuracy ", numCorrect, " / ", testingData.size);
 
-    net.save( dataPath + "/mnist_cnn_epoch_" + epoch:string + ".model");
+    if !perfTest then net.save( dataPath + "/mnist_cnn_epoch_" + (epoch + 1):string + ".model");
 }
+
+t.stop();
+
+if perfTest then writeln("time: ", t.elapsed());
