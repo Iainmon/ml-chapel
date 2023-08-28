@@ -33,6 +33,17 @@ mnistCNN: clean
 	echo "Build complete."
 	./build/mnistCNN
 
+mnistDemo: clean
+	chpl $(fast_flag) -M ml-study/lib $(blas_libs)  $(output)/demo_cnn ml-study/demo/demo_cnn.chpl
+	echo "Build complete."
+	cd ml-study/demo && ../../build/demo_cnn
+
+mnistDemoEval: clean
+	chpl $(fast_flag) -M ml-study/lib $(blas_libs)  $(output)/demo_cnn_eval ml-study/demo/demo_cnn_eval.chpl
+	echo "Build complete."
+	./build/demo_cnn_eval
+
+
 mnistCNNBatch: clean
 	chpl $(fast_flag)  -M ml-study/lib $(blas_libs)  $(output)/mnistCNN ml-study/performance/mnistCNNBatch.chpl
 	echo "Build complete."
