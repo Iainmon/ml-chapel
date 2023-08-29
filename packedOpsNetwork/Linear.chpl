@@ -494,8 +494,7 @@ proc random(m: int, n: int, type eltType=real(64)) {
     return new Matrix(A);
 }
 
-// mu : mean
-// sigma : standard deviation
+
 proc boxMuller(mu: real, sigma: real) {
     var u1 = rng.getNext();
     var u2 = rng.getNext();
@@ -591,6 +590,13 @@ proc decodeMatrix(T: TensorCoder): Matrix(real) {
         halt("Error: trying to decode a vector as a matrix.");
     return new Matrix(T.underlyingTensor);
 }
+
+
+
+
+
+
+
 
 
 
