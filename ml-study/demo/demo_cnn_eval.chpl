@@ -24,7 +24,17 @@ var net = new chai.Network(
     )
 );
 
-const modelFile = "ml-study/lib/models/demo_cnn" + net.signature() + ".model";
+// var net = new chai.Network(
+//     (
+//         new chai.Conv(1,8,7,stride=1),
+//         new chai.Conv(8,12,5),
+//         new chai.Conv(12,16,3),
+//         new chai.MaxPool(),
+//         new chai.SoftMax(10)
+//     )
+// );
+
+const modelFile = "ml-study/lib/models/mnist" + net.signature() + ".model";
 
 config const testFile = "/Users/iainmoncrief/Documents/Processing/sketch_230720a/digit.txt"; // "digit.txt";
 
