@@ -777,5 +777,25 @@ module Tensor {
         dK.data = data;
         return dK;
     }
+
+
+    class FlatTensor {
+        var _shapeDomain: domain(1,int) = {0..#0};
+        var shape: [_shapeDomain] int;
+        var tensor: Tensor(1);
+        proc init(t: Tensor(?rank)) {
+            this._shapeDomain = {0..#rank};
+            var _shape: [_shapeDomain] int;
+            for param i in 0..#rank do
+                _shape[i] = t.shape[i];
+            this.shape = _shape;
+            this.tensor = t.flatten();
+        }
+
+
+    }
+
+
+
 }
 

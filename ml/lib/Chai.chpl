@@ -21,6 +21,8 @@ module Chai {
     use Tensor only Tensor;
 
     import IO;
+    import Map;
+
 
     proc err(args...?n) {
         var s = "";
@@ -28,6 +30,44 @@ module Chai {
             s += args(i): string;
         }
         try! throw new Error(s);
+    }
+
+
+
+    class ParamManager {
+
+        var parameters: Map.map(string,shared tn.FlatTensor);
+        var gradients: Map.map(string,shared tn.FlatTensor);
+
+        proc init(ps ...?n) where n > 0 {
+            this.parameters = new Map.map(string,shared tn.FlatTensor);
+            this.gradients = new Map.map(string,shared tn.FlatTensor);
+
+            for param i in 0..#n {
+                parameters.addOrReplace(ps[i][0],new shared tn.FlatTensor(ps[i][1]));
+                gradients.addOrReplace(ps[i][0] ,new shared tn.FlatTensor(ps[i][1]));
+            }
+        }
+        proc init() {
+            this.parameters = new Map.map(string,shared tn.FlatTensor);
+            this.gradients = new Map.map(string,shared tn.FlatTensor);
+        }
+
+        proc updateParameter(name: string, prm: Tensor) {
+            this.parameters.addOrReplace(name,new shared tn.FlatTensor(prm));
+        }
+
+        proc updateGradient(name: string, grd: Tensor) {
+            this.gradients.addOrReplace(name,new shared tn.FlatTensor(grd));
+        }
+
+        iter these() {
+            var keys = parameters.keysToArray();
+
+            for (k,p,g) in zip(keys,parameters.values(),gradients.values()) {
+                yield (k,p,g);
+            }
+        }
     }
 
 
@@ -43,6 +83,8 @@ module Chai {
         var biasGrad: Tensor(1);
         var weightsGrad: Tensor(2);
         var uninitialized = true;
+
+        var parameters = new shared ParamManager();
 
         proc init(outputSize: int) {
             this.outputSize = outputSize;
@@ -69,6 +111,7 @@ module Chai {
             biasGrad = tn.zeros(outputSize);
             weightsGrad = tn.zeros(outputSize, inputSize);
             uninitialized = false;
+            parameters = new shared ParamManager(("bias",bias),("weights",weights));
         }
 
         proc ref forwardProp(input: Tensor(1)): Tensor(1) {
@@ -118,6 +161,22 @@ module Chai {
             return newDeltas;
         }
 
+        proc ref populateParameters(): shared ParamManager {
+            parameters.updateParameter("bias",bias);
+            parameters.updateParameter("weights",weights);
+            parameters.updateGradient("bias",biasGrad);
+            parameters.updateGradient("weights",weightsGrad);
+            return parameters;
+        }
+
+        proc ref optimizeParameters() {
+            var flatBias = try! parameters.parameters["bias"];
+            var flatWeights = try! parameters.parameters["weights"];
+            bias = flatBias.tensor.reshape(bias.domain);
+            weights = flatWeights.tensor.reshape(weights.domain);
+        }
+
+
         proc ref optimize(mag: real(64)) {
             this.bias -= mag * this.biasGrad;
             this.weights -= mag * this.weightsGrad;
@@ -151,6 +210,8 @@ module Chai {
     */
     record Sigmoid {
 
+        var parameters = new shared ParamManager();
+
         proc init() { }
 
         proc forwardProp(x: Tensor(?rank)): Tensor(rank) {
@@ -171,6 +232,12 @@ module Chai {
         proc backwardBatch(deltas: [] ?tensorType1, inputs: [] ?tensorType2) where isSubtype(tensorType1, Tensor) && isSubtype(tensorType2, Tensor) {
             return [(d,i) in zip(deltas,inputs)] backward(d,i);
         }
+
+        proc populateParameters(): shared ParamManager {
+            return parameters;
+        }
+
+        proc optimizeParameters() { }
 
         proc optimize(mag: real) { }
 
@@ -200,6 +267,8 @@ module Chai {
         var stride: int = 1;
         var padding: int = 0;
 
+        var parameters = new shared ParamManager();
+
         proc init(inChannels: int,outChannels: int, kernelSize: int = 3, stride: int = 1, padding: int = 0) {
             const numFilters = outChannels;
             this.numFilters = numFilters;
@@ -213,6 +282,8 @@ module Chai {
             this.filtersGrad = tn.zeros(numFilters,kernelSize,kernelSize,inChannels);
             this.stride = stride;
             this.padding = padding;
+
+            parameters = new shared ParamManager(("filters",filters));
         }
 
         proc forwardPropBatch(batch: [] Tensor(3)): [] Tensor(3) {
@@ -305,6 +376,17 @@ module Chai {
             return newDeltas;
         }
 
+        proc populateParameters(): shared ParamManager {
+            parameters.updateParameter("filters",filters);
+            parameters.updateGradient("filters",filtersGrad);
+            return parameters;
+        }
+
+        proc optimizeParameters() {
+            var flatFilters = try! parameters.parameters["filters"];
+            filters = flatFilters.tensor.reshape(filters.domain);
+        }
+
         proc optimize(mag: real(64)) {
             filters -= mag * filtersGrad;
         }
@@ -338,6 +420,8 @@ module Chai {
     */
 
     record MaxPool {
+
+        var parameters = new shared ParamManager();
 
         proc forwardPropBatch(batch: [] Tensor(3)): [] Tensor(3) {
             const batchSize = batch.size;
@@ -403,6 +487,12 @@ module Chai {
             return newDeltas;
         }
 
+        proc populateParameters(): shared ParamManager {
+            return parameters;
+        }
+
+        proc optimizeParameters() { }
+
         proc optimize(mag: real(64)) { }
 
         proc resetGradients() { }
@@ -415,6 +505,74 @@ module Chai {
             return "MaxPool()";
     }
 
+    record AvgPool {
+        var kernelSize: int = 2;
+        var stride: int = 2;
+
+        var parameters = new shared ParamManager();
+
+        proc init(kernelSize: int = 2, stride: int = 2) {
+            this.kernelSize = kernelSize;
+            this.stride = stride;
+        }
+
+        proc forwardProp(input: Tensor(3)) {
+            const (h,w,c) = input.shape;
+            const (nh,nw) = tn.correlateShape((kernelSize,kernelSize),(h,w),stride=stride,padding=0);
+            var output = new Tensor({0..#nh, 0..#nw, 0..#c});
+            forall (i,j,k) in output.domain with (ref output) {
+                const sum = + reduce input[i*stride..#kernelSize, j*stride..#kernelSize, k];
+                output[i,j,k] = sum / (kernelSize:real ** 2.0);
+            }
+            return output;
+        }
+
+        proc forwardPropBatch(batch: [] Tensor(3)): [] Tensor(3) {
+            const batchSize = batch.size;
+            var pools: [0..#batchSize] Tensor(3);
+            forall (convs,i) in zip(batch,0..) {
+                pools[i] = forwardProp(convs);
+            }
+            return pools;
+        }
+
+        proc backward(delta: Tensor(3), input: Tensor(3)) {
+            const (h,w,c) = input.shape;
+            const (nh,nw) = tn.correlateShape((kernelSize,kernelSize),(h,w),stride=stride,padding=0);
+            var grad = new Tensor({0..#h, 0..#w, 0..#c});
+            forall (i,j,k) in delta.domain with (+ reduce grad) {
+                grad[i*stride..#kernelSize, j*stride..#kernelSize, k] += delta[i,j,k] / (kernelSize:real ** 2.0);
+            }
+            return grad;
+        }
+
+        proc backwardBatch(deltas: [] Tensor(3), inputs: [] Tensor(3)): [] Tensor(3) {
+            const batchSize = deltas.size;
+            var newDeltas: [0..#batchSize] Tensor(3);
+            forall (delta,inputs,i) in zip(deltas,inputs,0..) {
+                newDeltas[i] = backward(delta,inputs);
+            }
+            return newDeltas;
+        }
+
+        proc populateParameters(): shared ParamManager {
+            return parameters;
+        }
+
+        proc optimizeParameters() { }
+
+        proc optimize(mag: real(64)) { }
+
+        proc resetGradients() { }
+
+        proc write(fw: IO.fileWriter) throws { }
+
+        proc read(fr: IO.fileReader) throws { }
+
+        proc signature(): string do
+            return "AvgPool(" + kernelSize:string + "," + stride:string + ")";
+    }
+
     /*
         ReLU (leaky) is a non-linear activation function.
         It is used to introduce non-linearity into the network.
@@ -423,6 +581,8 @@ module Chai {
     */
     record ReLU {
         var a: real = 0.0;
+
+        var parameters = new shared ParamManager();
 
         proc init(a: real = 0.0) do
             this.a = a;
@@ -464,6 +624,12 @@ module Chai {
             return newDeltas;
         }
 
+        proc populateParameters(): shared ParamManager {
+            return parameters;
+        }
+
+        proc optimizeParameters() { }
+
         proc optimize(mag: real(64)) { }
 
         proc resetGradients() { }
@@ -482,6 +648,8 @@ module Chai {
     */
     record Flatten {
 
+        var parameters = new shared ParamManager();
+
         proc init() { }
 
         proc forwardProp(input: Tensor(?inRank)): Tensor(1) do
@@ -495,6 +663,11 @@ module Chai {
 
         proc backwardBatch(deltas: [] Tensor(1), inputs: [] ?tensorType): [] tensorType where isSubtype(tensorType,Tensor) do
             return [(d,i) in zip(deltas,inputs)] backward(d,i);
+
+        proc populateParameters(): shared ParamManager do
+            return parameters;
+        
+        proc optimizeParameters() { }
 
         proc optimize(mag: real(64)) { }
 
@@ -524,6 +697,8 @@ module Chai {
         var uninitialized: bool = true;
         var outputSize: int = 0;
 
+        var parameters = new shared ParamManager();
+
         proc init(outputSize: int) do
             this.outputSize = outputSize;
 
@@ -541,6 +716,8 @@ module Chai {
             biasesGrad = tn.zeros(outputSize);
 
             uninitialized = false;
+
+            parameters = new shared ParamManager(("weights",weights),("biases",biases));
         }
         
         proc forwardPropBatch(batch: [] ?tensorType): [] Tensor(1) where isSubtype(tensorType, Tensor) {
@@ -632,6 +809,21 @@ module Chai {
             this.weightsGrad.data = weightsGrad.data;
             this.biasesGrad.data = biasesGrad.data;
             return newDeltas;
+        }
+
+        proc populateParameters(): shared ParamManager {
+            parameters.updateParameter("weights",weights);
+            parameters.updateParameter("biases",biases);
+            parameters.updateGradient("weights",weightsGrad);
+            parameters.updateGradient("biases",biasesGrad);
+            return parameters;
+        }
+
+        proc optimizeParameters() {
+            var flatWeights = try! parameters.parameters["weights"];
+            var flatBiases = try! parameters.parameters["biases"];
+            weights = flatWeights.tensor.reshape(weights.domain);
+            biases = flatBiases.tensor.reshape(biases.domain);
         }
 
         proc optimize(mag: real(64)) {
