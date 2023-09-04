@@ -59,7 +59,80 @@ class Dense(Layer):
         self.biases_grad = np.zeros(self.biases.shape)
 
 
+class Conv(Layer):
+    def __init__(self,input_size,output_size,kernel_size,padding=0,stride=1):
+        self.input_size = input_size
+        self.output_size = output_size
+        self.kernel_size = kernel_size
+        self.padding = padding
+        self.stride = stride
+        self.kernels = np.random.randn(output_size,kernel_size,kernel_size,input_size) / np.sqrt(input_size * kernel_size * kernel_size)
+        self.kernels_grad = np.zeros(self.kernels.shape)
 
+    def forward(self,x):
+        h,w,c = x.shape
+        h_ = (h - self.kernel_size + 2*self.padding) // self.stride + 1
+        w_ = (w - self.kernel_size + 2*self.padding) // self.stride + 1
+        y = np.zeros((h_,w_,self.output_size))
+        for i in range(h_):
+            for j in range(w_):
+                for k in range(self.output_size):
+                    y[i,j,k] = np.sum(x[i:i+self.kernel_size,j:j+self.kernel_size,:] * self.kernels[k,:,:,:])
+
+
+        return y
+
+    def backward(self,x,delta):
+        # compute the gradient of the loss with respect to the kernels
+        h,w,c = x.shape
+        h_ = (h - self.kernel_size + 2*self.padding) // self.stride + 1
+        w_ = (w - self.kernel_size + 2*self.padding) // self.stride + 1
+        for i in range(h_):
+            for j in range(w_):
+                for k in range(self.output_size):
+                    self.kernels_grad[k,:,:,:] += x[i:i+self.kernel_size,j:j+self.kernel_size,:] * delta[i,j,k]
+        
+        # compute the gradient of the loss with respect to the input
+        x_grad = np.zeros(x.shape)
+        for i in range(h_):
+            for j in range(w_):
+                for k in range(self.output_size):
+                    x_grad[i:i+self.kernel_size,j:j+self.kernel_size,:] += self.kernels[k,:,:,:] * delta[i,j,k]
+        return x_grad
+    
+    def update(self,eta):
+        self.kernels -= eta * self.kernels_grad
+
+    def reset_grad(self):
+        self.kernels_grad = np.zeros(self.kernels.shape)
+
+
+class MaxPool(Layer):
+    def __init__(self,kernel_size,stride=2):
+        self.kernel_size = kernel_size
+        self.stride = stride
+    
+    def forward(self,x):
+        h,w,c = x.shape
+        h_ = (h - self.kernel_size) // self.stride + 1
+        w_ = (w - self.kernel_size) // self.stride + 1
+        y = np.zeros((h_,w_,c))
+        for i in range(h_):
+            for j in range(w_):
+                for k in range(c):
+                    y[i,j,k] = np.max(x[i:i+self.kernel_size,j:j+self.kernel_size,k])
+        return y
+
+    def backward(self,x,delta):
+        h,w,c = x.shape
+        h_ = (h - self.kernel_size) // self.stride + 1
+        w_ = (w - self.kernel_size) // self.stride + 1
+        x_grad = np.zeros(x.shape)
+        for i in range(h_):
+            for j in range(w_):
+                for k in range(c):
+                    x_grad[i:i+self.kernel_size,j:j+self.kernel_size,k] += np.where(x[i:i+self.kernel_size,j:j+self.kernel_size,k] == np.max(x[i:i+self.kernel_size,j:j+self.kernel_size,k]),1,0) * delta[i,j,k]
+        return x_grad
 
 
 class Activation(Layer):
@@ -161,25 +234,37 @@ def loss_grad(y,y_):
 
 if __name__ == '__main__':
 
-    model = Sequential(
-        Dense(2),
-        Dense(5),
-        Dense(2)
-    )
-
-    x = np.array([1,0])
-    y = np.array([0,1])
-    print(model.forward(x))
+    layer = Sequential(Conv(1,1,3),MaxPool(2),Conv(1,1,3))
+    x = np.random.randn(10,10,1)
+    y = np.random.randn(*layer.forward(x).shape)
     for e in range(100):
-        model.reset_grad()
-        y_ = model.forward(x)
+        layer.reset_grad()
+        y_ = layer.forward(x)
         delta = loss_grad(y,y_)
-        model.backward(x,delta)
-        model.update(0.01)
+        layer.backward(x,delta)
+        layer.update(0.01)
         print('loss: ', loss(y,y_))
-    print('x: ', x)
-    print('y: ', y)
-    print('z: ', model.forward(x))
+
+
+    # model = Sequential(
+    #     Dense(2),
+    #     Dense(5),
+    #     Dense(2)
+    # )
+
+    # x = np.array([1,0])
+    # y = np.array([0,1])
+    # print(model.forward(x))
+    # for e in range(100):
+    #     model.reset_grad()
+    #     y_ = model.forward(x)
+    #     delta = loss_grad(y,y_)
+    #     model.backward(x,delta)
+    #     model.update(0.01)
+    #     print('loss: ', loss(y,y_))
+    # print('x: ', x)
+    # print('y: ', y)
+    # print('z: ', model.forward(x))
 
 
     # x = np.array([1,0])
