@@ -14,14 +14,13 @@ class Layer:
 
     def forwardBatch(self,batch):
         outputs = []
-        for i in range(batch.shape[0]):
-            x = batch[i]
+        for x in batch:
             outputs.append(self.forward(x))
         return outputs
 
     def backwardBatch(self,batch,deltas):
         outputs = []
-        for i in range(batch.shape[0]):
+        for i in range(len(batch)):
             x = batch[i]
             delta = deltas[i]
             outputs.append(self.backward(x,delta))

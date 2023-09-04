@@ -1,5 +1,15 @@
 import PyChai as ch
 import numpy as np
+import timeit
+import sys
+
+num_epochs = 500
+
+data_size = int(sys.argv[1]) if len(sys.argv) > 1 else 100
+batch_train = (sys.argv[2].lower() in ('yes','true','t','1')) if len(sys.argv) > 2 else True
+
+print('data_size:', data_size)
+print('batch_train:', batch_train)
 
 def approx_function(x):
     center = (1,1)
@@ -10,8 +20,10 @@ def approx_function(x):
         return np.array([0,1,0])
     else:
         return np.array([0,0,1])
-    
-interval = np.linspace(0,2,100)
+
+
+
+interval = np.linspace(0,2,data_size)
 domain = [np.array([x,y]) for x in interval for y in interval]
 
 data = [(x,approx_function(x)) for x in domain]
@@ -24,15 +36,27 @@ model = ch.Sequential(
 )
 model.forward(data[0][0])
 
-for e in range(1000):
+tic = timeit.default_timer()
+
+for e in range(num_epochs):
     np.random.shuffle(data)
     epoch_loss = 0
     model.reset_grad()
-    for x,y in data:
-        y_ = model.forward(x)
-        delta = ch.loss_grad(y,y_)
-        model.backward(x,delta)
-        epoch_loss += ch.loss(y,y_)
+    if batch_train:
+        xs = [x for x,y in data]
+        ys = [y for x,y in data]
+        yHats = model.forwardBatch(xs)
+        deltas = [ch.loss_grad(y,yHat) for y,yHat in zip(ys,yHats)]
+        model.backwardBatch(xs,deltas)
+        epoch_loss = np.sum([ch.loss(y,yHat) for y,yHat in zip(ys,yHats)])
+    else:
+        for x,y in data:
+            y_ = model.forward(x)
+            delta = ch.loss_grad(y,y_)
+            model.backward(x,delta)
+            epoch_loss += ch.loss(y,y_)
     model.update(0.01 / len(data))
     print('epoch:', e, 'loss:', epoch_loss/len(data))
-    
+
+toc = timeit.default_timer()
+print('time:', toc-tic)

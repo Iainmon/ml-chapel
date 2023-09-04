@@ -1,6 +1,13 @@
 import Chai as ch;
 import Tensor as tn;
 use Tensor only Tensor;
+import Time;
+
+
+config const dataSize = 100;
+config const parallelize = true;
+config const numEpochs = 500;
+config const hiddenLayerSize = 4;
 
 proc approxFunction(x: real, y: real) {
     const center = (1.0,1.0);
@@ -24,7 +31,7 @@ proc lossGrad(y: Tensor(1), yHat: Tensor(1)): Tensor(1) {
     return (-2.0) * (y - yHat);
 }
 
-const interval = [x in 0..#100] x * (2.0 / 100.0);
+const interval = [x in 0..#dataSize] x * (2.0 / (dataSize: real));
 const sampleDomain = tn.cartesian(interval,interval);
 var data: [{0..#(interval.size ** 2)}] (Tensor(1),Tensor(1));
 var i = 0;
@@ -37,7 +44,7 @@ for (x,y) in sampleDomain {
 }
 
 var model = new ch.Sequential(
-    new ch.Dense(4),
+    new ch.Dense(hiddenLayerSize),
     new ch.Sigmoid(),
     new ch.Dense(3),
     new ch.Sigmoid()
@@ -45,25 +52,33 @@ var model = new ch.Sequential(
 
 model.forwardProp(data[0][0]);
 
+var tic = new Time.stopwatch();
+tic.start();
 
-for e in 0..#1000 {
-    // tn.shuffle(data);
+
+for e in 0..#numEpochs {
+    tn.shuffle(data);
     var epochLoss = 0.0;
     model.resetGradients();
 
-    const xs = [d in data] d[0];
-    const ys = [d in data] d[1];
-    const yHats = model.forwardPropBatch(xs);
-    const grads = lossGrad(ys, yHats);
-    model.backwardBatch(grads, xs);
-    epochLoss = + reduce loss(ys, yHats);
-    /*for (x,y) in data {
-        var yHat = model.forwardProp(x);
-        var grad = lossGrad(y, yHat);
-        epochLoss += loss(y, yHat);
-        model.backward(grad,x);
-    }*/
+    if parallelize {
+        const xs = [d in data] d[0];
+        const ys = [d in data] d[1];
+        const yHats = model.forwardPropBatch(xs);
+        const grads = lossGrad(ys, yHats);
+        model.backwardBatch(grads, xs);
+        epochLoss = + reduce loss(ys, yHats);
+    } else {
+        for (x,y) in data {
+            var yHat = model.forwardProp(x);
+            var grad = lossGrad(y, yHat);
+            epochLoss += loss(y, yHat);
+            model.backward(grad,x);
+        }
+    }
+
     model.optimize(0.01 / data.size);
     writeln("epoch: ", e, " loss: ", epochLoss / data.size);
 }
 
+writeln("time: ", tic.elapsed());
