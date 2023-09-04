@@ -6,7 +6,7 @@ import Time;
 
 config const dataSize = 100;
 config const parallelize = true;
-config const numEpochs = 500;
+config const numEpochs = 150;
 config const hiddenLayerSize = 4;
 
 proc approxFunction(x: real, y: real) {

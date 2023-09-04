@@ -3,13 +3,15 @@ import numpy as np
 import timeit
 import sys
 
-num_epochs = 500
+num_epochs = 150
 
 data_size = int(sys.argv[1]) if len(sys.argv) > 1 else 100
 batch_train = (sys.argv[2].lower() in ('yes','true','t','1')) if len(sys.argv) > 2 else True
+hidden_layer_size = int(sys.argv[3]) if len(sys.argv) > 3 else 4
 
 print('data_size:', data_size)
 print('batch_train:', batch_train)
+print('hidden_layer_size:', hidden_layer_size)
 
 def approx_function(x):
     center = (1,1)
@@ -29,7 +31,7 @@ domain = [np.array([x,y]) for x in interval for y in interval]
 data = [(x,approx_function(x)) for x in domain]
 
 model = ch.Sequential(
-    ch.Dense(4),
+    ch.Dense(hidden_layer_size),
     ch.Sigmoid(),
     ch.Dense(3),
     ch.Sigmoid(),
