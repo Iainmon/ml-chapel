@@ -80,16 +80,20 @@ module Optimize {
                 if decay > 0.0 then
                     gt += decay * pt;
 
+                const lr = learnRate * (1.0 / (1.0 + decay * iterations));
+
                 if iterations > 0 then
-                    velocities[i] = momentum * velocities[i] + gt;
-                else
-                    velocities[i] = gt;
+                    velocities[i] = momentum * velocities[i] + lr * gt;
+                // else
+                    // velocities[i] = gt;
                 
 
                 gt = velocities[i];
                 grad.tensor = gt;
                 prm.tensor -= learnRate * gt;
             }
+
+            iterations += 1;
 
         }
 
