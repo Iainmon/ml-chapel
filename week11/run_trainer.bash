@@ -20,7 +20,7 @@ for data_size in 20 40 60 80 100 120 140 160 180 200; do
         echo "Running data_size=$data_size, hidden_layer_size=$hidden_layer_size"
 
         # Run the command and capture its time
-        time_output=$(python3 trainer.py $data_size True $hidden_layer_size | tail -n 1)
+        time_output=$(python3.6 trainer.py $data_size True $hidden_layer_size | tail -n 1)
 
         # Extract num_seconds from the output
         num_seconds=$(echo $time_output | awk -F ': ' '{print $2}')
