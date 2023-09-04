@@ -1,0 +1,38 @@
+import PyChai as ch
+import numpy as np
+
+def approx_function(x):
+    center = (1,1)
+    dist = np.sqrt((x[0] - center[0])**2 + (x[1] - center[1])**2)
+    if dist < 0.2:
+        return np.array([1,0,0])
+    elif dist < 0.4:
+        return np.array([0,1,0])
+    else:
+        return np.array([0,0,1])
+    
+interval = np.linspace(0,2,100)
+domain = [np.array([x,y]) for x in interval for y in interval]
+
+data = [(x,approx_function(x)) for x in domain]
+
+model = ch.Sequential(
+    ch.Dense(4),
+    ch.Sigmoid(),
+    ch.Dense(3),
+    ch.Sigmoid(),
+)
+model.forward(data[0][0])
+
+for e in range(1000):
+    np.random.shuffle(data)
+    epoch_loss = 0
+    model.reset_grad()
+    for x,y in data:
+        y_ = model.forward(x)
+        delta = ch.loss_grad(y,y_)
+        model.backward(x,delta)
+        epoch_loss += ch.loss(y,y_)
+    model.update(0.01 / len(data))
+    print('epoch:', e, 'loss:', epoch_loss/len(data))
+    
