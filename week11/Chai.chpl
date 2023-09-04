@@ -160,8 +160,7 @@ module Chai {
         proc init() { }
 
         proc forwardProp(x: Tensor(?rank)): Tensor(rank) {
-            const activation = tn.sigmoid(x);
-            return activation;
+            return tn.sigmoid(x);
         }
 
         proc forwardPropBatch(batch: [] ?tensorType) where isSubtype(tensorType, Tensor) {
@@ -169,9 +168,7 @@ module Chai {
         }
 
         proc backward(delta: Tensor(?rank),lastInput: Tensor(rank)): Tensor(rank) {
-            const sp = tn.sigmoidPrime(lastInput);
-            const grad = delta * sp;
-            return grad; 
+            return delta * tn.sigmoidPrime(lastInput); 
         }
 
         proc backwardBatch(deltas: [] ?tensorType1, inputs: [] ?tensorType2) where isSubtype(tensorType1, Tensor) && isSubtype(tensorType2, Tensor) {

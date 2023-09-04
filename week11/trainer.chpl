@@ -17,9 +17,7 @@ proc approxFunction(x: real, y: real) {
 }
 
 proc loss(y: Tensor(1), yHat: Tensor(1)): real {
-    var dif = y.data - yHat.data;
-    var squares = dif ** 2.0;
-    return + reduce squares;
+    return + reduce ((y.data - yHat.data) ** 2.0);
 }
 
 proc lossGrad(y: Tensor(1), yHat: Tensor(1)): Tensor(1) {
@@ -38,7 +36,7 @@ for (x,y) in sampleDomain {
     i += 1;
 }
 
-var model = new ch.Network(
+var model = new ch.Sequential(
     new ch.Dense(4),
     new ch.Sigmoid(),
     new ch.Dense(3),
@@ -49,15 +47,22 @@ model.forwardProp(data[0][0]);
 
 
 for e in 0..#1000 {
-    tn.shuffle(data);
+    // tn.shuffle(data);
     var epochLoss = 0.0;
     model.resetGradients();
-    for (x,y) in data {
+
+    const xs = [d in data] d[0];
+    const ys = [d in data] d[1];
+    const yHats = model.forwardPropBatch(xs);
+    const grads = lossGrad(ys, yHats);
+    model.backwardBatch(grads, xs);
+    epochLoss = + reduce loss(ys, yHats);
+    /*for (x,y) in data {
         var yHat = model.forwardProp(x);
-        var grad = lossGrad(yHat, y);
+        var grad = lossGrad(y, yHat);
         epochLoss += loss(y, yHat);
-        model.backwardProp(x,grad);
-    }
+        model.backward(grad,x);
+    }*/
     model.optimize(0.01 / data.size);
     writeln("epoch: ", e, " loss: ", epochLoss / data.size);
 }

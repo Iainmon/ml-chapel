@@ -14,7 +14,9 @@ proc lossGrad(y: Tensor(1), yHat: Tensor(1)): Tensor(1) {
 
 var layer = new ch.Sequential(
     new ch.Dense(2),
+    new ch.Sigmoid(),
     new ch.Dense(5),
+    new ch.Sigmoid(),
     new ch.Dense(2)
 );
 var x = tn.zeros(2);
