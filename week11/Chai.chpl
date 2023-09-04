@@ -766,4 +766,47 @@ module Chai {
             return sig;
         }
     }
+
+    record Sequential {
+        var _layers;
+        proc ref layers ref do return this._layers;
+
+        proc init(layers ...) do
+            this._layers = layers;
+
+        proc forwardPropHelp(ref layers, param n: int, input: Tensor(?)) {
+            if n == layers.size then return input;
+            return forwardPropHelp(layers, n+1, layers[n].forwardProp(input));
+        }
+
+        proc backwardForwardPropHelp(ref layers, param n: int, lastDelta: Tensor(?), input: Tensor(?)) {
+            if n == layers.size then return lastDelta;
+            const nextInput = layers[n].forwardProp(input);
+            const delta = backwardForwardPropHelp(layers, n+1, lastDelta, nextInput);
+            return layers[n].backward(delta,input);
+        }
+
+        proc ref forwardProp(input: Tensor(?)) do
+            return forwardPropHelp(this.layers, 0, input);
+
+        proc ref backward(delta: Tensor(?), input: Tensor(?)) do
+            return backwardForwardPropHelp(this.layers, 0, delta, input);
+        
+        proc ref forwardPropBatch(inputs) do
+            return forwardPropHelpBatch(this.layers, 0, inputs);
+
+        proc ref backwardBatch(deltas, inputs) do
+            return backwardForwardPropHelpBatch(this.layers, 0, inputs=inputs, lastDeltas=deltas);
+
+        proc ref optimize(mag: real) do
+            for param i in 0..#(this.layers.size) do
+                this.layers[i].optimize(mag);
+
+        proc ref resetGradients() do
+            for param i in 0..#(this.layers.size) do
+                this.layers[i].resetGradients();
+        
+
+
+    }
 }

@@ -12,7 +12,11 @@ proc lossGrad(y: Tensor(1), yHat: Tensor(1)): Tensor(1) {
     return (-2.0) * (y - yHat);
 }
 
-var layer = new ch.Dense(2);
+var layer = new ch.Sequential(
+    new ch.Dense(2),
+    new ch.Dense(5),
+    new ch.Dense(2)
+);
 var x = tn.zeros(2);
 x[0] = 1.0;
 var y = tn.zeros(2);
@@ -25,7 +29,7 @@ for e in 0..100 {
     var yHat = layer.forwardProp(x);
     var l = loss(y, yHat);
     var lGrad = lossGrad(y, yHat);
-    layer.backward(lGrad,x);
+    layer.backwardBatch([lGrad],[x]);
     layer.optimize(0.01);
     writeln("Epoch: ", e, " Loss: ", l);
 }
