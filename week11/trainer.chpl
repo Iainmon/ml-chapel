@@ -6,7 +6,7 @@ import Time;
 
 config const dataSize = 100;
 config const parallelize = true;
-config const numEpochs = 150;
+config const numEpochs = 100;
 config const hiddenLayerSize = 4;
 
 proc approxFunction(x: real, y: real) {
@@ -44,7 +44,11 @@ for (x,y) in sampleDomain {
 }
 
 var model = new ch.Sequential(
-    new ch.Dense(hiddenLayerSize),
+    new ch.Dense(16),
+    new ch.Sigmoid(),
+    new ch.Dense(16),
+    new ch.Sigmoid(),
+    new ch.Dense(16),
     new ch.Sigmoid(),
     new ch.Dense(3),
     new ch.Sigmoid()

@@ -3,7 +3,7 @@ import numpy as np
 import timeit
 import sys
 
-num_epochs = 150
+num_epochs = 100
 
 data_size = int(sys.argv[1]) if len(sys.argv) > 1 else 100
 batch_train = (sys.argv[2].lower() in ('yes','true','t','1')) if len(sys.argv) > 2 else True
@@ -31,7 +31,11 @@ domain = [np.array([x,y]) for x in interval for y in interval]
 data = [(x,approx_function(x)) for x in domain]
 
 model = ch.Sequential(
-    ch.Dense(hidden_layer_size),
+    ch.Dense(16),
+    ch.Sigmoid(),
+    ch.Dense(16),
+    ch.Sigmoid(),
+    ch.Dense(16),
     ch.Sigmoid(),
     ch.Dense(3),
     ch.Sigmoid(),
