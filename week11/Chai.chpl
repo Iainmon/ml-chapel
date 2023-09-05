@@ -18,7 +18,7 @@
 module Chai {
     
     import Tensor as tn;
-    use Tensor only Tensor;
+    use Tensor;
 
     import IO;
 

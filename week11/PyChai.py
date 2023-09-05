@@ -134,6 +134,12 @@ class MaxPool(Layer):
                     x_grad[i:i+self.kernel_size,j:j+self.kernel_size,k] += np.where(x[i:i+self.kernel_size,j:j+self.kernel_size,k] == np.max(x[i:i+self.kernel_size,j:j+self.kernel_size,k]),1,0) * delta[i,j,k]
         return x_grad
 
+class Flatten(Layer):
+    def forward(self,x):
+        return x.flatten()
+
+    def backward(self,x,delta):
+        return delta.reshape(x.shape)
 
 class Activation(Layer):
     def __init__(self,activation,activation_grad,vectorize=True):
