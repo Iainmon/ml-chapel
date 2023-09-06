@@ -11,6 +11,7 @@ mkdir -p batch_tests/output/chapel
 for data_size in 100 200 300 400 500 600 700 800 900 1000 1100 1200 1300 1400 1500; do
     cat sbatch_header.bash > sbatch_tmp.bash
     echo "./mnist_trainer --dataSize=$data_size > batch_tests/output/chapel/mnist_trainer_$data_size.csv" >> sbatch_tmp.bash
+    chmod +x sbatch_tmp.bash
     sbatch -W sbatch_tmp.bash &
     # sleep 5 && salloc --nodes=1 --cpus-per-task=64 --partition=chapdl --exclusive srun ./mnist_trainer --dataSize=$data_size > batch_tests/output/chapel/mnist_trainer_$data_size.csv &
 done
