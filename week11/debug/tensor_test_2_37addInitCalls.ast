@@ -1,0 +1,163 @@
+AST dump for tensor_test_2 after pass addInitCalls.
+Module use list: ChapelStandard Tensor 
+
+{
+  function chpl__init_tensor_test_2[496692]() : void[4] "insert line file info" "module init" "resolved"
+  {
+    if chpl__init_tensor_test_2_p[2798965]
+    {
+      goto _exit_chpl__init_tensor_test_2[2799000] _exit_chpl__init_tensor_test_2[2799000]
+    }
+    val modFormatStr[2798973]:chpl_c_string[19] "temp"
+    val modStr[2798974]:chpl_c_string[19] "temp"
+    ref refIndentLevel[2798986]:int(32)[98] "temp"
+    (2798979 'move' modFormatStr[2798973] c"%*s\n")
+    (2798981 'move' modStr[2798974] c"tensor_test_2")
+    (2798984 call printModuleInit[26842] modFormatStr[2798973] modStr[2798974] 13)
+    (2798990 'move' refIndentLevel[2798986](2798989 'addr of' moduleInitLevel[26833]))
+    (2798993 '+=' refIndentLevel[2798986] 1)
+    (2798971 'move' chpl__init_tensor_test_2_p[2798965] 1)
+    {
+      (2795480 call chpl__init_Tensor[496695])
+    }
+    (2795477 call chpl_addModule[154796] c"tensor_test_2"(2795473 'cast_to_type' chpl__deinit_tensor_test_2[2598889] c_fn_ptr[155]))
+    val call_tmp[864147]:Tensor(3,real(64))[1768947] "dead after last mention" "maybe param" "temp"
+    val ret_tmp[2576899]:Tensor(3,real(64))[1768947] "temp"
+    (201436 call zeros[1768836] 3 3 3 ret_tmp[2576899])
+    (2576902 'move' call_tmp[864147] ret_tmp[2576899])
+    (659047 'move' a[201431] call_tmp[864147])
+    val call_tmp[864152]:Tensor(2,real(64))[1802610] "dead after last mention" "maybe param" "temp"
+    val ret_tmp[2577891]:Tensor(2,real(64))[1802610] "temp"
+    (201449 call zeros[1802504] 3 3 ret_tmp[2577891])
+    (2577894 'move' call_tmp[864152] ret_tmp[2577891])
+    (659049 'move' b[201445] call_tmp[864152])
+    val _iterator[201498]:_ic_these_range_int64_t_both_one[1381364] "dead at end of block" "expr temp" "temp"
+    val call_tmp[864157]:range(int(64),low,one)[1367199] "dead at end of block" "expr temp" "insert auto destroy" "maybe param" "temp"
+    val ret_tmp[2571194]:range(int(64),low,one)[1367199] "temp"
+    (201461 call chpl_build_low_bounded_range[1366666] 0 ret_tmp[2571194])
+    (2571197 'move' call_tmp[864157] ret_tmp[2571194])
+    val call_tmp[864162]:range(int(64),both,one)[1372327] "dead at end of block" "expr temp" "insert auto destroy" "maybe param" "temp"
+    val ret_tmp[2571923]:range(int(64),both,one)[1372327] "temp"
+    (201458 call #[1458149] call_tmp[864157] 3 ret_tmp[2571923])
+    (2571926 'move' call_tmp[864162] ret_tmp[2571923])
+    (201507 'move' _iterator[201498](201505 call _getIterator[1376543] call_tmp[864162]))
+    (2646912 call zip1[1381399] _iterator[201498])
+    CForLoop[2646945]
+    {
+      val _indexOfInterest[2646946]:int(64)[13] "dead at end of block" "an _indexOfInterest or chpl__followIdx variable" "temp"
+      (2646950 call zip2[1381408] _iterator[201498])
+      (2646953 'move' _indexOfInterest[2646946](2646956 call getValue[1381444] _iterator[201498]))
+      const i[2646958]:int(64)[13] "const" "index var" "insert auto destroy"
+      (2646960 'move' i[2646958] _indexOfInterest[2646946])
+      val call_tmp[2646964]:range(int(64),neither,one)[1829929] "dead after last mention" "expr temp" "insert auto destroy" "maybe param" "temp"
+      val ret_tmp[2646966]:range(int(64),neither,one)[1829929] "temp"
+      (2646969 call chpl_build_unbounded_range[72180] ret_tmp[2646966])
+      (2646971 'move' call_tmp[2646964] ret_tmp[2646966])
+      val call_tmp[2646974]:range(int(64),neither,one)[1829929] "dead after last mention" "expr temp" "insert auto destroy" "maybe param" "temp"
+      val ret_tmp[2646976]:range(int(64),neither,one)[1829929] "temp"
+      (2646979 call chpl_build_unbounded_range[72180] ret_tmp[2646976])
+      (2646981 'move' call_tmp[2646974] ret_tmp[2646976])
+      val call_tmp[2646984]:[ArrayViewRankChangeDom(2,int(64),one,3*bool,3*int(64),int(64),unmanaged ArrayViewRankChangeDist(unmanaged DefaultDist,3*bool,3*int(64)))] real(64)[1876608] "dead after last mention" "expr temp" "insert auto destroy" "maybe param" "temp"
+      ref _chpl_forward_tgt[2646986]:[domain(3,int(64),one)] real(64)[1782798] "dead after last mention" "maybe ref" "maybe type" "temp"
+      (2646988 'move' _chpl_forward_tgt[2646986](2646991 call chpl_forwarding_expr1[1830189] a[201431]))
+      val ret_tmp[2646993]:[ArrayViewRankChangeDom(2,int(64),one,3*bool,3*int(64),int(64),unmanaged ArrayViewRankChangeDist(unmanaged DefaultDist,3*bool,3*int(64)))] real(64)[1876608] "temp"
+      (2646996 call this[1834616] _chpl_forward_tgt[2646986] call_tmp[2646964] call_tmp[2646974] i[2646958] ret_tmp[2646993])
+      (2647002 'move' call_tmp[2646984] ret_tmp[2646993])
+      val call_tmp[2647005]:Tensor(2,real(64))[1802610] "dead at end of block" "delay instantiation" "maybe param" "temp"
+      val initTemp[2647007]:Tensor(2,real(64))[1802610] "dead at end of block" "delay instantiation" "temp"
+      (2647010 call init[1877191] initTemp[2647007] call_tmp[2646984])
+      (2647013 'move' call_tmp[2647005] initTemp[2647007])
+      const a_i[2647016]:Tensor(2,real(64))[1802610] "dead at end of block" "const" "delay instantiation" "insert auto destroy"
+      (2647018 'move' a_i[2647016] call_tmp[2647005])
+      (2647022 call chpl__autoDestroy[2407494] call_tmp[2646984])
+      (2647025 call chpl__autoDestroy[2386676] call_tmp[2646974])
+      (2647028 call chpl__autoDestroy[2386676] call_tmp[2646964])
+      val call_tmp[2647030]:Tensor(2,real(64))[1802610] "dead at end of block" "maybe param" "temp"
+      val ret_tmp[2647032]:Tensor(2,real(64))[1802610] "temp"
+      (2647035 call foo[2078191] a_i[2647016] ret_tmp[2647032])
+      (2647038 'move' call_tmp[2647030] ret_tmp[2647032])
+      const c[2647041]:Tensor(2,real(64))[1802610] "dead at end of block" "const" "insert auto destroy"
+      (2647043 'move' c[2647041] call_tmp[2647030])
+      ref call_tmp[2647046]:[domain(2,int(64),one)] real(64)[1814632] "dead after last mention" "maybe param" "temp"
+      (2647048 'move' call_tmp[2647046](2647051 call data[2078937] b[201445]))
+      const-ref call_tmp[2647053]:[domain(2,int(64),one)] real(64)[1814632] "dead after last mention" "maybe param" "reference to a const" "temp"
+      (2647055 'move' call_tmp[2647053](2647058 call data[2078937] c[2647041]))
+      (2647061 call +=[2104222] call_tmp[2647046] call_tmp[2647053])
+      (2647065 call chpl__autoDestroy[2385702] c[2647041])
+      (2647068 call chpl__autoDestroy[2385702] a_i[2647016])
+      (2647074 call zip3[1381417] _iterator[201498])
+      {
+        (2646922 call init[1381453] _iterator[201498])
+      }
+      {
+        (2646938 call hasMore[1381435] _iterator[201498])
+      }
+      {
+        (2646926 call incr[1381462] _iterator[201498])
+      }
+    }
+    (2646934 call zip4[1381426] _iterator[201498])
+    (2586973 call _freeIterator[1386053] _iterator[201498])
+    (2586975 call chpl__autoDestroy[2277595] call_tmp[864162])
+    (2586978 call chpl__autoDestroy[2277549] call_tmp[864157])
+    (201530 call writeln[2116531] b[201445])
+    (2798996 '-=' refIndentLevel[2798986] 1)
+    label _endchpl__init_tensor_test_2[2799002]
+    label _exit_chpl__init_tensor_test_2[2799000]
+    (626857 return _void[58])
+  }
+  function foo[2078191](const  ref arg x[2078193]:Tensor(2,real(64))[1802610], ref arg _retArg[2582470]:Tensor(2,real(64))[1802610]) : void[4] "compiler added where" "fn returns via _retArg" "instantiated generic" "invisible fn" "resolved"
+  {
+    val ret[2078215]:Tensor(2,real(64))[1802610] "dead after last mention" "RVV" "temp"
+    val t[2078285]:Tensor(2,real(64))[1802610] "dead at end of block" "insert auto destroy"
+    (2078287 call init=[2078320] t[2078285] x[2078193])
+    ref call_tmp[2078291]:[domain(2,int(64),one)] real(64)[1814632] "dead after last mention" "maybe param" "temp"
+    (2078293 'move' call_tmp[2078291](2078296 call data[2078937] t[2078285]))
+    val coerce_tmp[2102390]:real(64)[16] "dead after last mention" "coerce temp" "insert auto destroy" "temp"
+    (2102396 'move' coerce_tmp[2102390](2102392 'cast' real(64)[16] 1))
+    (2078300 call +=[2101722] call_tmp[2078291] coerce_tmp[2102390])
+    (2078305 'move' ret[2078215] t[2078285])
+    label _end_foo[2078313]
+    (2582472 '=' _retArg[2582470] ret[2078215])
+    (2582474 return _void[58])
+  }
+  val a[201431]:Tensor(3,real(64))[1768947] "dead at end of block" "insert auto destroy"
+  val b[201445]:Tensor(2,real(64))[1802610] "dead at end of block" "insert auto destroy"
+  function main[980262]() : void[4] "resolved"
+  {
+    (980265 return _void[58])
+  }
+  function chpl_gen_main[980268](const  ref arg _arg[980267]:chpl_main_argument[154531]) : int(64)[13] "compiler generated" "export" "generated main" "local args" "resolved"
+  {
+    val ret[980311]:int(64)[13] "dead after last mention" "RVV" "temp"
+    val _main_ret[980272]:int(64)[13] "dead after last mention" "temp"
+    val _endCount[980274]:_EndCount(atomic int(64),int(64))[1311525] "dead after last mention" "temp"
+    (980279 'move' _endCount[980274](980276 call _endCountAlloc[1307718]))
+    (2728280 call chpl_task_setDynamicEndCount[30678] _endCount[980274])
+    (980283 call chpl_rt_preUserCodeHook[154765])
+    (980285 call chpl__init_tensor_test_2[496692])
+    (980287 call main[980262])
+    (980289 'move' _main_ret[980272] 0)
+    (980292 call chpl_rt_postUserCodeHook[154769])
+    val default_arg_countRunningTasks[2225510]:bool[10] "dead after last mention" "default actual temp" "expr temp" "maybe param" "maybe type" "suppress lvalue error" "temp"
+    val error[2556156]:Error[27332] "error variable" "temp"
+    (2556158 'move' error[2556156] nil[44])
+    (980294 call _waitEndCount[2225278] _endCount[980274] error[2556156])
+    val errorExists[2735313]:bool[10] "temp"
+    (2735318 'move' errorExists[2735313](2735315 '!=' error[2556156] nil[44]))
+    if errorExists[2735313]
+    {
+      (2556161 call chpl_uncaught_error[29235] error[2556156])
+    }
+    (980297 call chpl_deinitModules[154820])
+    (980316 'move' ret[980311] _main_ret[980272])
+    (980313 return ret[980311])
+  }
+  function chpl__deinit_tensor_test_2[2598889]:proc()[2795112]() : void[4] "resolved"
+  {
+    label _endchpl__deinit_tensor_test_2[2598895]
+    (2598900 call chpl__autoDestroy[2385702] b[201445])
+    (2598897 call chpl__autoDestroy[2384323] a[201431])
+    (2598892 return _void[58])
+  }
+}

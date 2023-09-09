@@ -1,0 +1,50 @@
+AST dump for tensor_test_2 after pass scopeResolve.
+Module use list: ChapelStandard Tensor 
+
+{
+  function foo[202022](arg x[202027] :
+  (202025 call Tensor[204896](?) 2)) : _unknown[54]
+  {
+    unknown t[202032] x[202027]
+    (202035 'end of statement')
+    (202036 call +=(202039 call . t[202032] c"data") 1)
+    (202043 return t[202032])
+  }
+  unknown a[202048](202053 call zeros module=[259] Tensor[210428] 3 3 3)
+  (202060 'end of statement')
+  unknown b[202062](202066 call zeros module=[259] Tensor[210428] 3 3)
+  (202072 'end of statement')
+  {
+    unknown _indexOfInterest[202114] "an _indexOfInterest or chpl__followIdx variable" "temp"
+    unknown _iterator[202115] "expr temp" "temp"
+    (202124 'move' _iterator[202115](202122 call _getIterator(202131 call chpl_direct_counted_range_iter 0 3)))
+    Defer
+    {
+      {
+        (202146 call _freeIterator _iterator[202115])
+      }
+    }
+    { scopeless type
+      (202136 'move' _indexOfInterest[202114](202133 call iteratorIndex _iterator[202115]))
+    }
+    ForLoop[202116]
+    {
+      unknown i[202073] "index var" "insert auto destroy"
+      (202141 'move' i[202073] _indexOfInterest[202114])
+      {
+        const a_i[202083] "const"(202084 'new'(202087 call Tensor[204896](?)(202089 call a[202048](202090 call chpl_build_unbounded_range)(202092 call chpl_build_unbounded_range) i[202073])))
+        (202096 'end of statement')
+        const c[202098] "const"(202100 call foo a_i[202083])
+        (202103 'end of statement')
+        (202104 call +=(202107 call . b[202062] c"data")(202111 call . c[202098] c"data"))
+      }
+      label _continueLabel[202119]
+      _indexOfInterest[202114]
+      _iterator[202115]
+    }
+    label _breakLabel[202120]
+  }
+  (202154 call writeln b[202062])
+  (416676 'used modules list'(394840 'use' ChapelStandard[26840])(202016 'import' Tensor[210428] 'as' tn)(202020 'use' Tensor[210428] 'only' Tensor))
+  (202050 'referenced modules list' Tensor[210428] Tensor[210428])
+}

@@ -1,0 +1,50 @@
+AST dump for tensor_test_2 after pass flattenClasses.
+Module use list: ChapelStandard Tensor 
+
+{
+  function foo[201405](arg x[201410] :
+  (201408 call Tensor[204262](?) 2)) : _unknown[54]
+  {
+    unknown t[201415] x[201410]
+    (201418 'end of statement')
+    (201419 call +=(201422 call . t[201415] c"data") 1)
+    (201426 return t[201415])
+  }
+  unknown a[201431](201436 call zeros module=[259] Tensor[209780] 3 3 3)
+  (201443 'end of statement')
+  unknown b[201445](201449 call zeros module=[259] Tensor[209780] 3 3)
+  (201455 'end of statement')
+  {
+    unknown _indexOfInterest[201497] "an _indexOfInterest or chpl__followIdx variable" "temp"
+    unknown _iterator[201498] "expr temp" "temp"
+    (201507 'move' _iterator[201498](201505 call _getIterator(201458 call #(201461 call chpl_build_low_bounded_range 0) 3)))
+    Defer
+    {
+      {
+        (201522 call _freeIterator _iterator[201498])
+      }
+    }
+    { scopeless type
+      (201512 'move' _indexOfInterest[201497](201509 call iteratorIndex _iterator[201498]))
+    }
+    ForLoop[201499]
+    {
+      unknown i[201456] "index var" "insert auto destroy"
+      (201517 'move' i[201456] _indexOfInterest[201497])
+      {
+        const a_i[201466] "const"(201467 'new'(201470 call Tensor[204262](?)(201472 call a[201431](201473 call chpl_build_unbounded_range)(201475 call chpl_build_unbounded_range) i[201456])))
+        (201479 'end of statement')
+        const c[201481] "const"(201483 call foo a_i[201466])
+        (201486 'end of statement')
+        (201487 call +=(201490 call . b[201445] c"data")(201494 call . c[201481] c"data"))
+      }
+      label _continueLabel[201502]
+      _indexOfInterest[201497]
+      _iterator[201498]
+    }
+    label _breakLabel[201503]
+  }
+  (201530 call writeln b[201445])
+  (415115 'used modules list'(393253 'use' ChapelStandard[26819])(201399 'import' Tensor[209780] 'as' tn)(201403 'use' Tensor[209780] 'only' Tensor))
+  (201433 'referenced modules list' Tensor[209780] Tensor[209780])
+}
